@@ -1,0 +1,124 @@
+/* Whiteboard – layout follows the 1440×1024 design ("Desktop 4"). */
+:root{
+  --navy:#000455; --panel:#EDEDED; --track:#D9D9D9;
+  --font:'Jura','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:var(--font);color:var(--navy);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+svg{display:block}
+
+/* ── Top bar ── */
+#topbar{position:fixed;inset:0 0 auto 0;height:60px;background:var(--navy);z-index:60;
+  box-shadow:0 2px 2px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
+#avatar{position:absolute;left:0;top:0;width:60px;height:60px}
+#avatar svg{overflow:visible}
+#title{height:25px;display:flex}
+#title svg{height:25px;width:auto}
+#sidebarBtn{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:6px;color:#fff;
+  display:flex;align-items:center;justify-content:center}
+#sidebarBtn svg{width:22px;height:22px}
+#sidebarBtn:hover{background:rgba(255,255,255,.14)}
+
+/* ── Stage ── */
+#stage{position:fixed;inset:60px 0 0 0;overflow:hidden;background:#fff;touch-action:none}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#ted{position:absolute;display:none;background:rgba(255,255,255,.6);border:1px dashed var(--navy);outline:none;
+  resize:none;overflow:hidden;white-space:pre;padding:0;margin:0;line-height:1.25;z-index:20;
+  -webkit-user-select:text;user-select:text;min-width:20px}
+#selbar{position:absolute;z-index:25;display:flex;gap:4px;align-items:center;background:var(--panel);
+  border-radius:10px;padding:5px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+#selbar[hidden]{display:none}
+#selbar button,#selbar label{width:30px;height:30px;border-radius:5px;background:#fff;border:.5px solid var(--navy);
+  display:flex;align-items:center;justify-content:center;font-size:15px;overflow:hidden;cursor:pointer}
+#selbar input[type=color]{width:42px;height:42px;border:0;padding:0;background:none;cursor:pointer}
+
+/* ── Left toolbar (design px, scaled with transform) ── */
+#ltb{position:fixed;left:10px;top:262px;width:80px;height:682px;background:var(--panel);border-radius:10px;z-index:50;
+  transform-origin:0 0;padding:46px 10px 0;display:flex;flex-direction:column;gap:5px;touch-action:none}
+#grip{position:absolute;left:0;top:0;width:80px;height:46px;cursor:grab;touch-action:none}
+#grip.dragging{cursor:grabbing}
+#grip svg{width:80px;height:46px}
+.tool{width:60px;height:65px;border-radius:5px;background:#fff;border:.5px solid var(--navy);color:var(--navy);flex:none;
+  display:block;position:relative;padding:0}
+.tool svg{position:absolute;inset:-.5px;width:60px;height:65px}
+.tool .rw{display:none}
+.tool.active,.tool.open{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tool.active .rn,.tool.open .rn{display:none}
+.tool.active .rw,.tool.open .rw{display:inline}
+.tool:not(.active):not(.open):hover{background:#EEF0FF}
+.tool:focus-visible{outline:2px solid #1e88e5;outline-offset:1px}
+
+/* ── Bottom toolbars (fixed to the bottom-left, as in the design) ── */
+#bbar{position:fixed;left:0;bottom:0;width:664px;height:70px;z-index:50;transform-origin:0 100%}
+.grp{position:absolute;top:0;height:60px;background:var(--panel);border-radius:10px}
+#g1{left:15px;width:110px}#g2{left:140px;width:276px}#g3{left:426px;width:238px}
+.grp>*{position:absolute}
+.bb{background:#fff;border:.5px solid var(--navy);border-radius:4.75px;color:var(--navy);padding:0;display:flex;
+  align-items:center;justify-content:center}
+.bb svg{width:100%;height:100%}
+#g1 .bb svg{width:20px;height:20px}
+.bb.flat{background:none;border:0}
+.bb:hover:not(:disabled){background:#EEF0FF}.bb.flat:hover:not(:disabled){background:rgba(0,4,85,.08)}
+.bb:disabled{opacity:.35;cursor:default}
+#prevBtn svg,#nextBtn svg{width:8px;height:18px}
+.lbl{display:block;color:var(--navy);white-space:nowrap}
+.lbl svg{width:auto;height:14px}
+.lbl.txt{font:500 20px/30px var(--font)}
+#pageNum{font:500 20px/1 var(--font);text-align:center;-webkit-user-select:text;user-select:text;outline:none}
+#pageNum:focus{box-shadow:0 0 0 2px rgba(0,4,85,.35)}
+#zoomRange{-webkit-appearance:none;appearance:none;height:14px;background:transparent;cursor:pointer;--p:38%}
+#zoomRange::-webkit-slider-runnable-track{height:6px;border-radius:3px;
+  background:linear-gradient(to right,var(--navy) var(--p),var(--track) var(--p))}
+#zoomRange::-moz-range-track{height:6px;border-radius:3px;background:var(--track)}
+#zoomRange::-moz-range-progress{height:6px;border-radius:3px;background:var(--navy)}
+#zoomRange::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--navy);margin-top:-4px}
+#zoomRange::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--navy)}
+
+/* ── Option popover ── */
+#pop{position:fixed;z-index:55;background:var(--panel);border-radius:10px;padding:12px;width:228px;
+  box-shadow:0 3px 12px rgba(0,0,0,.25);font-size:13px;font-weight:500}
+#pop[hidden]{display:none}
+#pop h3{font-size:12px;font-weight:700;margin:0 0 6px;letter-spacing:.04em;text-transform:uppercase}
+#pop .sec{margin-bottom:12px}#pop .sec:last-child{margin-bottom:0}
+#pop .sw{display:flex;flex-wrap:wrap;gap:6px}
+#pop .sw button,#pop .sw label{width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(0,0,0,.25);cursor:pointer;display:block;
+  overflow:hidden;position:relative}
+#pop .sw button.on{outline:2px solid var(--navy);outline-offset:2px}
+#pop .sw label input{position:absolute;inset:-6px;width:40px;height:40px;opacity:0;cursor:pointer}
+#pop .sw label.rainbow{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+#pop .chips{display:flex;flex-wrap:wrap;gap:6px}
+#pop .chip{min-width:44px;height:36px;padding:0 8px;border-radius:5px;background:#fff;border:.5px solid var(--navy);
+  display:flex;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:700}
+#pop .chip svg{width:22px;height:22px}
+#pop .chip.on{background:var(--navy);color:#fff}
+#pop input[type=range]{width:100%;accent-color:var(--navy)}
+#pop .row{display:flex;align-items:center;gap:8px}#pop .row b{min-width:34px;text-align:right;font-weight:700}
+#pop .wide{width:100%;height:36px}
+#pop p.hint{font-size:11px;opacity:.75;line-height:1.35;margin-top:6px}
+
+/* ── Sidebar ── */
+#scrim{position:fixed;inset:60px 0 0 0;background:rgba(0,0,0,.25);z-index:70}
+#scrim[hidden]{display:none}
+#sidebar{position:fixed;top:60px;right:0;bottom:0;width:260px;background:#fff;z-index:75;padding:12px 0;
+  box-shadow:-4px 0 14px rgba(0,0,0,.2);transform:translateX(105%);transition:transform .22s ease;overflow:auto}
+#sidebar.open{transform:none}
+#sidebar h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:14px 18px 6px;opacity:.7}
+#sidebar .nav{display:block;width:100%;text-align:left;padding:13px 18px;font:700 16px var(--font);color:var(--navy);text-decoration:none}
+#sidebar .nav:hover{background:#EEF0FF}
+#sidebar .nav.current{background:var(--navy);color:#fff}
+#sidebar .nav.disabled{opacity:.5;cursor:not-allowed}
+#sidebar .nav small{font-weight:500;font-size:11px;margin-left:6px}
+
+/* ── Modal & toast ── */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:90;display:flex;align-items:center;justify-content:center}
+#modal[hidden]{display:none}
+#modal .box{background:#fff;border-radius:12px;padding:22px;max-width:340px;width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+#modal p{font-size:16px;font-weight:700;margin-bottom:16px}
+#modal .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#modal button{height:38px;padding:0 16px;border-radius:6px;border:.5px solid var(--navy);background:#fff;font-weight:700}
+#modal button.primary{background:var(--navy);color:#fff}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:rgba(0,4,85,.92);color:#fff;
+  padding:7px 14px;border-radius:16px;font-size:13px;font-weight:700;z-index:95;pointer-events:none}
+#toast[hidden]{display:none}
