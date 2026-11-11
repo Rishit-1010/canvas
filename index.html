@@ -8,30 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header id="topbar">
-  <div id="avatar" title="Account"><svg viewBox="0 0 60 60" width="60" height="60" aria-hidden="true"><g filter="url(#filter1_d_408_159)">
-<path d="M10 30C10 18.9543 18.9543 10 30 10C41.0457 10 50 18.9543 50 30C50 41.0457 41.0457 50 30 50C18.9543 50 10 41.0457 10 30Z" fill="url(#paint0_linear_408_159)" shape-rendering="crispEdges" />
-<path d="M18.93 36V25.47H23.22C24.05 25.47 24.75 25.605 25.32 25.875C25.89 26.145 26.325 26.525 26.625 27.015C26.935 27.495 27.09 28.055 27.09 28.695C27.09 29.345 26.89 29.92 26.49 30.42C26.09 30.91 25.535 31.24 24.825 31.41C25.345 31.58 25.805 31.875 26.205 32.295C26.605 32.715 26.94 33.24 27.21 33.87C27.48 34.49 27.66 35.2 27.75 36H25.02C24.97 35.31 24.84 34.695 24.63 34.155C24.42 33.615 24.095 33.18 23.655 32.85C23.385 32.64 23.07 32.48 22.71 32.37C22.35 32.25 21.935 32.185 21.465 32.175V36H18.93ZM21.465 30.15H23.07C23.54 30.15 23.895 30.025 24.135 29.775C24.385 29.515 24.51 29.19 24.51 28.8C24.51 28.42 24.385 28.115 24.135 27.885C23.885 27.645 23.53 27.525 23.07 27.525H21.465V30.15ZM29.3011 25.47H32.2861L35.7661 34.02L34.7311 34.17L38.2261 25.47H41.1961V36H38.6611V27.285L39.5011 27.42L36.2761 36H34.2361L31.0111 27.42L31.8361 27.285V36H29.3011V25.47Z" fill="#000230" />
-</g>
-<defs><filter id="filter1_d_408_159" x="2" y="2" width="56" height="56" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-<feFlood flood-opacity="0" result="BackgroundImageFix" />
-<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
-<feOffset />
-<feGaussianBlur stdDeviation="4" />
-<feComposite in2="hardAlpha" operator="out" />
-<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0" />
-<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_408_159" />
-<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_408_159" result="shape" />
-</filter>
-<linearGradient id="paint0_linear_408_159" x1="13.218" y1="10" x2="46.782" y2="50" gradientUnits="userSpaceOnUse">
-<stop stop-color="white" />
-<stop offset="1" stop-color="#B3B3B3" />
-</linearGradient>
-</defs></svg></div>
   <h1 id="title" aria-label="Whiteboard"><svg viewBox="655 16 130 25" fill="#fff" aria-hidden="true"><path d="M658.143 41L655.559 16.9375H660.262L661.588 32.127L662.941 16.9375H667.426L668.711 32.127L669.996 16.9375H674.754L672.129 41H666.359L665.156 29.4199L664.008 41H658.143ZM676.189 41V16.9375H680.975V25.5371H683.244V16.9375H688.029V41H683.244V30.0898H680.975V41H676.189ZM689.943 41V16.9375H694.592V41H689.943ZM698.57 41V21.5586H695.713V16.9375H706.24V21.5586H703.383V41H698.57ZM707.58 41V16.9375H717.205V21.5859H712.475V26.2754H717.014V30.8008H712.475V36.3105H717.52V41H707.58ZM719.119 41V16.9375H725.641C727.391 16.9375 728.662 17.3659 729.455 18.2227C730.257 19.0703 730.658 20.474 730.658 22.4336V23.4863C730.658 24.6165 730.453 25.5326 730.043 26.2344C729.642 26.9362 729.027 27.3965 728.197 27.6152C729.282 27.8887 730.007 28.5312 730.371 29.543C730.745 30.5456 730.932 31.7715 730.932 33.2207C730.932 34.7793 730.786 36.1419 730.494 37.3086C730.202 38.4753 729.674 39.3822 728.908 40.0293C728.143 40.6764 727.053 41 725.641 41H719.119ZM723.822 26.002H724.807C725.253 26.002 725.54 25.8288 725.668 25.4824C725.796 25.1361 725.859 24.7214 725.859 24.2383V21.8184C725.859 21.0436 725.518 20.6562 724.834 20.6562H723.822V26.002ZM724.301 36.7617C725.549 36.7617 726.174 36.1693 726.174 34.9844V31.9766C726.174 31.293 726.069 30.7552 725.859 30.3633C725.659 29.9622 725.276 29.7617 724.711 29.7617H723.822V36.7344C724.023 36.7526 724.182 36.7617 724.301 36.7617ZM738.26 41.2188C736.337 41.2188 734.865 40.64 733.844 39.4824C732.832 38.3158 732.326 36.6341 732.326 34.4375V23.0078C732.326 20.9479 732.827 19.3848 733.83 18.3184C734.842 17.252 736.318 16.7188 738.26 16.7188C740.201 16.7188 741.673 17.252 742.676 18.3184C743.688 19.3848 744.193 20.9479 744.193 23.0078V34.4375C744.193 36.6341 743.683 38.3158 742.662 39.4824C741.65 40.64 740.183 41.2188 738.26 41.2188ZM738.301 36.7891C739.03 36.7891 739.395 36.0827 739.395 34.6699V22.9258C739.395 21.7409 739.039 21.1484 738.328 21.1484C737.526 21.1484 737.125 21.7546 737.125 22.9668V34.6973C737.125 35.4447 737.216 35.9824 737.398 36.3105C737.581 36.6296 737.882 36.7891 738.301 36.7891ZM745.479 41L747.803 16.9375H755.965L758.248 41H753.695L753.354 37.1172H750.455L750.154 41H745.479ZM750.797 33.2754H752.984L751.932 21.0391H751.713L750.797 33.2754ZM759.725 41V16.9375H767.107C768.338 16.9375 769.268 17.2201 769.896 17.7852C770.525 18.3411 770.945 19.125 771.154 20.1367C771.373 21.1393 771.482 22.3197 771.482 23.6777C771.482 24.9902 771.314 26.0384 770.977 26.8223C770.648 27.6061 770.024 28.1484 769.104 28.4492C769.86 28.6042 770.389 28.9824 770.689 29.584C770.999 30.1764 771.154 30.9466 771.154 31.8945V41H766.41V31.5801C766.41 30.8783 766.264 30.4453 765.973 30.2812C765.69 30.1081 765.23 30.0215 764.592 30.0215V41H759.725ZM764.619 25.8516H765.781C766.447 25.8516 766.779 25.127 766.779 23.6777C766.779 22.7389 766.706 22.1237 766.561 21.832C766.415 21.5404 766.141 21.3945 765.74 21.3945H764.619V25.8516ZM773.068 41V16.9375H779.686C781.417 16.9375 782.721 17.4206 783.596 18.3867C784.471 19.3438 784.908 20.7474 784.908 22.5977V33.8633C784.908 36.1419 784.507 37.901 783.705 39.1406C782.912 40.3802 781.518 41 779.521 41H773.068ZM777.908 36.748H778.742C779.626 36.748 780.068 36.3197 780.068 35.4629V23.0488C780.068 22.2467 779.959 21.7318 779.74 21.5039C779.531 21.2669 779.098 21.1484 778.441 21.1484H777.908V36.748Z" fill="#fff" />
 </svg></h1>
   <button id="sidebarBtn" title="Switch between Whiteboard and Graph" aria-label="Open sidebar"><svg viewBox="1399 19 22 22" fill="none" aria-hidden="true"><path d="M1413.33 20V40M1417.78 20H1402.22C1400.99 20 1400 20.9949 1400 22.2222V37.7778C1400 39.0051 1400.99 40 1402.22 40H1417.78C1419.01 40 1420 39.0051 1420 37.7778V22.2222C1420 20.9949 1419.01 20 1417.78 20Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
@@ -107,23 +89,26 @@
   </div>
 </footer>
 
-<!-- Right sidebar: switch between whiteboard and graph -->
+<!-- Left sidebar: switch between whiteboard and graph -->
 <div id="scrim" hidden></div>
 <aside id="sidebar" aria-label="Switch view">
-  <h2>Switch view</h2>
-  <a class="nav current" href="index.html">Whiteboard</a>
-  <a class="nav disabled" href="#" aria-disabled="true">Graph Calculator <small>coming soon</small></a>
+  <div class="sb-head"><img src="icon.png" alt=""><div><b>Rishit's Canvas</b><span>Choose a workspace</span></div></div>
+  <h2>Workspaces</h2>
+  <a class="nav current" href="index.html"><span class="ni"><svg viewBox="0 0 24 24"><path d="M4 20l4-1L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/></svg></span><span class="nt"><b>Whiteboard</b><small>Draw, write &amp; construct</small></span></a>
+  <a class="nav" href="graph.html"><span class="ni"><svg viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M7 16c3 0 3-9 6-9s2 7 5 7"/></svg></span><span class="nt"><b>Graph Calculator</b><small>Plot, solve &amp; explore</small></span></a>
   <h2>Board</h2>
-  <button class="nav" id="exportPng">Export as PNG</button>
-  <button class="nav" id="saveJson">Save board file</button>
-  <button class="nav" id="openJson">Open board file</button>
+  <button class="nav" id="exportPng"><span class="ni"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg></span><span class="nt"><b>Export as PNG</b><small>Save the board as an image</small></span></button>
+  <button class="nav" id="saveJson"><span class="ni"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg></span><span class="nt"><b>Save board file</b><small>Download all boards (.json)</small></span></button>
+  <button class="nav" id="openJson"><span class="ni"><svg viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2H10l2 2.2h6.5a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg></span><span class="nt"><b>Open board file</b><small>Load a saved board</small></span></button>
   <input type="file" id="fileJson" accept=".json,application/json" hidden>
   <input type="file" id="fileImg" accept="image/*" hidden>
+  <div class="sb-foot">Rishit's Canvas</div>
 </aside>
 
 <div id="modal" hidden><div class="box" role="dialog" aria-modal="true"><p id="modalMsg"></p><div class="row" id="modalBtns"></div></div></div>
 <div id="toast" hidden></div>
 
+<script src="geometry.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
