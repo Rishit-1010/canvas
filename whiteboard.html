@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jura:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/whiteboard.css">
 </head>
 <body>
@@ -42,11 +42,9 @@
   <canvas id="cv"></canvas>
   <textarea id="ted" spellcheck="false" wrap="off"></textarea>
   <div id="selbar" hidden>
-    <label title="Colour"><input type="color" id="selColor"></label>
-    <label title="Fill colour" id="selFillWrap"><input type="color" id="selFill"></label>
-    <button id="selNoFill" title="No fill">∅</button>
-    <button id="selDup" title="Duplicate (Ctrl+D)">⧉</button>
-    <button id="selDel" title="Delete (Del)">🗑</button>
+    <button id="selColor" title="Colour"><span></span></button>
+    <button id="selDup" title="Duplicate (Ctrl+D)" aria-label="Duplicate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+    <button id="selDel" title="Delete (Del)" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
   </div>
 </div>
 
@@ -97,6 +95,8 @@
 </nav>
 
 <div id="pop" hidden></div>
+<div id="cp" hidden aria-label="Colour picker"></div>
+<div id="hint" hidden></div>
 
 <!-- Bottom toolbars (fixed) -->
 <footer id="bbar">
@@ -115,6 +115,7 @@
     <span class="lbl txt" id="pageOf" style="left:157.5px;top:15px">of 1</span>
     <button class="bb" id="nextBtn" title="Next board" aria-label="Next board" style="left:198.25px;top:13.25px;width:19.5px;height:33.5px"><svg class="" viewBox="345 975 8 18" fill="none" aria-hidden="true"><path d="M345.508 993C345.584 993 345.665 992.963 345.753 992.888C345.841 992.814 345.922 992.739 345.998 992.665L352.605 985.213C352.755 985.039 352.862 984.853 352.925 984.654C352.975 984.43 353 984.182 353 983.909C353 983.611 352.962 983.362 352.887 983.164C352.799 982.94 352.686 982.754 352.548 982.605L346.054 975.302C345.979 975.227 345.904 975.165 345.828 975.116C345.753 975.041 345.684 975.004 345.621 975.004C345.458 974.979 345.32 975.078 345.207 975.302C345.094 975.525 345.038 975.786 345.038 976.084C345.038 976.333 345.069 976.531 345.132 976.68C345.182 976.829 345.264 976.966 345.376 977.09L352.002 984.468L352.04 983.424L345.452 990.802C345.276 990.976 345.157 991.149 345.094 991.323C345.031 991.472 345 991.671 345 991.919C345 992.193 345.056 992.441 345.169 992.665C345.27 992.888 345.383 993 345.508 993Z" fill="currentColor" />
 </svg></button>
+    <button class="bb flat" id="delBtn" title="Delete this board" aria-label="Delete board" style="left:255px;top:21px;width:18px;height:18px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
     <button class="bb flat" id="addBtn" title="Add board" aria-label="Add board" style="left:228px;top:21px;width:18px;height:18px"><svg class="" viewBox="378 975 18 18" fill="none" aria-hidden="true"><path d="M379.439 985.446C379.02 985.446 378.676 985.313 378.406 985.048C378.135 984.783 378 984.458 378 984.072C378 983.687 378.135 983.373 378.406 983.133C378.676 982.867 379.02 982.735 379.439 982.735H394.561C394.98 982.735 395.324 982.867 395.594 983.133C395.865 983.398 396 983.723 396 984.108C396 984.494 395.865 984.819 395.594 985.084C395.324 985.325 394.98 985.446 394.561 985.446H379.439ZM386.963 993C386.52 993 386.139 992.855 385.82 992.566C385.525 992.277 385.377 991.916 385.377 991.482V976.554C385.377 976.096 385.525 975.723 385.82 975.434C386.139 975.145 386.533 975 387 975C387.467 975 387.836 975.145 388.107 975.434C388.402 975.723 388.549 976.096 388.549 976.554V991.446C388.549 991.904 388.402 992.277 388.107 992.566C387.811 992.855 387.43 993 386.963 993Z" fill="currentColor" />
 </svg></button>
   </div>
@@ -144,6 +145,7 @@
 <div id="modal" hidden><div class="box" role="dialog" aria-modal="true"><p id="modalMsg"></p><div class="row" id="modalBtns"></div></div></div>
 <div id="toast" hidden></div>
 
+<script src="js/geometry.js"></script>
 <script src="js/whiteboard.js"></script>
 </body>
 </html>
