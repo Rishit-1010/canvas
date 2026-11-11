@@ -1,16 +1,1885 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0; url=whiteboard.html" />
-  <title>RMCanvas</title>
-  <link rel="icon" href="favicon.ico" />
-  <style>
-    body { font-family: system-ui, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; background:#000455; color:#fff; }
-    a { color:#fff; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Whiteboard – Rishit's Canvas</title>
+<link rel="icon" href="favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Whiteboard – layout follows the 1440×1024 design ("Desktop 4"). */
+:root{
+  --navy:#000455; --panel:#EDEDED; --track:#D9D9D9;
+  --font:'Quicksand','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:var(--font);color:var(--navy);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+svg{display:block}
+
+/* ── Top bar ── */
+#topbar{position:fixed;inset:0 0 auto 0;height:60px;background:var(--navy);z-index:60;
+  box-shadow:0 2px 2px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
+#avatar{position:absolute;left:0;top:0;width:60px;height:60px}
+#avatar svg{overflow:visible}
+#title{height:25px;display:flex}
+#title svg{height:25px;width:auto}
+#sidebarBtn{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:6px;color:#fff;
+  display:flex;align-items:center;justify-content:center}
+#sidebarBtn svg{width:22px;height:22px}
+#sidebarBtn:hover{background:rgba(255,255,255,.14)}
+
+/* ── Stage ── */
+#stage{position:fixed;inset:60px 0 var(--bar-h,84px) 0;overflow:hidden;background:#fff;touch-action:none}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#ted{position:absolute;display:none;background:rgba(255,255,255,.6);border:1px dashed var(--navy);outline:none;
+  resize:none;overflow:hidden;white-space:pre;padding:0;margin:0;line-height:1.25;z-index:20;
+  -webkit-user-select:text;user-select:text;min-width:20px}
+#selbar{position:absolute;z-index:25;display:flex;gap:4px;align-items:center;background:#fff;border-radius:12px;padding:5px;
+  box-shadow:0 6px 18px rgba(0,4,85,.28),0 0 0 1px rgba(0,4,85,.08);animation:popIn .16s ease-out}
+#selbar[hidden]{display:none}
+#selbar button{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--navy);
+  transition:background .14s,transform .14s}
+#selbar button:hover{background:#EEF0FF;transform:translateY(-1px)}#selbar button:active{transform:scale(.92)}
+#selbar button svg{width:20px;height:20px}
+#selColor span{width:20px;height:20px;border-radius:50%;box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(0,4,85,.45);display:block}
+
+
+/* ── Bottom bar: tools + controls in one fixed navy bar (like the top bar) ── */
+#bbar{position:fixed;inset:auto 0 0 0;z-index:60;background:var(--navy);box-shadow:0 -2px 2px rgba(0,0,0,.25);
+  display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 14px calc(8px + env(safe-area-inset-bottom));--tw:56px}
+#tools{display:flex;gap:6px;padding:6px 4px 4px;margin:-6px 0 -4px;overflow-x:auto;scrollbar-width:none;min-width:0}
+#tools::-webkit-scrollbar{display:none}
+#ctrl{display:flex;align-items:center;gap:10px;flex:none}
+.tool{width:var(--tw);height:calc(var(--tw)*65/60);border-radius:5px;background:#fff;border:.5px solid #fff;color:var(--navy);flex:none;
+  display:block;position:relative;padding:0}
+.tool svg{position:absolute;inset:0;width:100%;height:100%}
+.tool .rw{display:none}
+.tool.active{background:var(--navy);color:#fff;border-color:#fff;box-shadow:0 0 0 2px #fff;transform:translateY(-3px)}
+.tool.active .rn{display:none}
+.tool.active .rw{display:inline}
+.tool{transition:transform .16s cubic-bezier(.2,.8,.3,1),box-shadow .16s,background .16s}
+.tool:not(.active):hover{background:#EEF0FF;transform:translateY(-3px);box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.tool:active{transform:scale(.96)}
+.tool.open:not(.active){background:#DDE1FF}
+.tool:focus-visible{outline:2px solid #6ea8ff;outline-offset:2px}
+.cg{height:calc(var(--tw)*65/60);background:var(--panel);border-radius:10px;display:flex;align-items:center;gap:8px;padding:0 10px;flex:none}
+.bb{background:#fff;border:.5px solid var(--navy);border-radius:4.75px;color:var(--navy);padding:0;display:flex;
+  align-items:center;justify-content:center;flex:none;width:36px;height:36px}
+.bb svg{width:100%;height:100%}
+#undoBtn svg,#redoBtn svg{width:20px;height:20px}
+.bb.flat{background:none;border:0;width:26px;height:26px}
+.bb:hover:not(:disabled){background:#EEF0FF}.bb.flat:hover:not(:disabled){background:rgba(0,4,85,.08)}
+.bb:disabled{opacity:.35;cursor:default}
+#prevBtn,#nextBtn{width:20px;height:32px}
+#prevBtn svg,#nextBtn svg{width:8px;height:18px}
+.lbl{display:block;color:var(--navy);white-space:nowrap}
+.lbl svg{width:auto;height:14px}
+.lbl.txt{font:500 18px/1 var(--font)}
+#pageNum{width:30px;height:24px;font:500 18px/1 var(--font);text-align:center;-webkit-user-select:text;user-select:text;outline:none}
+#pageNum:focus{box-shadow:0 0 0 2px rgba(0,4,85,.35)}
+#zoomRange{-webkit-appearance:none;appearance:none;width:120px;height:14px;background:transparent;cursor:pointer;--p:38%}
+#zoomRange::-webkit-slider-runnable-track{height:6px;border-radius:3px;
+  background:linear-gradient(to right,var(--navy) var(--p),var(--track) var(--p))}
+#zoomRange::-moz-range-track{height:6px;border-radius:3px;background:var(--track)}
+#zoomRange::-moz-range-progress{height:6px;border-radius:3px;background:var(--navy)}
+#zoomRange::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--navy);margin-top:-4px}
+#zoomRange::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--navy)}
+#zoomPct{display:none;font:700 14px var(--font);min-width:48px;height:30px;border-radius:6px;color:var(--navy)}
+/* medium screens: controls on top, tools below */
+@media (max-width:1299px){
+  #bbar{flex-direction:column-reverse;align-items:stretch;gap:8px;--tw:58px}
+  #tools{justify-content:center}
+  #ctrl{justify-content:center;flex-wrap:nowrap}
+  .cg{height:48px}
+}
+@media (max-width:760px){
+  #bbar{--tw:50px;padding-left:8px;padding-right:8px;gap:6px}
+  #ctrl{gap:6px}.cg{gap:6px;padding:0 8px;height:44px}
+  #zoomRange{width:84px}.bb{width:32px;height:32px}.lbl svg{height:12px}
+  #tools{justify-content:flex-start}
+}
+@media (max-width:560px){
+  #bbar{--tw:48px}
+  #zoomRange,.lbl:not(.txt),#zoomOutBtn,#zoomInBtn{display:none}
+  #zoomPct{display:block}
+  #ctrl{justify-content:space-between;width:100%}
+  #g2{gap:4px}
+}
+@media (max-width:380px){ #bbar{--tw:44px} .cg{padding:0 5px;gap:4px} .bb{width:28px;height:28px} #pageNum{width:26px} }
+@media (max-height:520px) and (min-width:561px){ #bbar{--tw:44px} }
+
+/* ── Option popover ── */
+@keyframes popUp{from{opacity:0;transform:translateY(10px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes popIn{from{opacity:0;transform:translateX(-8px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+#pop{position:fixed;z-index:55;width:252px;max-height:calc(100vh - 150px);overflow-y:auto;overscroll-behavior:contain;padding:14px 14px 12px;border-radius:18px;font-size:13px;font-weight:600;color:var(--navy);
+  background:rgba(250,250,255,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(0,4,85,.1);
+  box-shadow:0 22px 44px -10px rgba(0,4,85,.4),0 2px 8px rgba(0,4,85,.12);transform-origin:50% 100%;animation:popUp .22s cubic-bezier(.2,.9,.3,1.15)}
+#pop[hidden]{display:none}
+#pop.wide{width:340px;max-width:calc(100vw - 12px)}
+#pop::-webkit-scrollbar{width:8px}#pop::-webkit-scrollbar-thumb{background:rgba(0,4,85,.25);border-radius:4px}
+#pop .ph{margin:-2px 0 12px;padding-bottom:10px;border-bottom:1px solid rgba(0,4,85,.1);display:flex;flex-direction:column;gap:1px}
+#pop .ph b{font-size:17px;font-weight:700;letter-spacing:.01em}
+#pop .ph span{font-size:11.5px;font-weight:500;opacity:.6}
+#pop h3{font-size:10.5px;font-weight:700;margin:0 0 7px;letter-spacing:.1em;text-transform:uppercase;opacity:.55}
+#pop .sec{margin-bottom:13px}#pop .sec:last-child{margin-bottom:0}
+#pop .sw{display:flex;flex-wrap:wrap;gap:8px}
+.dot{width:26px;height:26px;border-radius:50%;background:var(--c);position:relative;flex:none;border:2px solid #fff;
+  box-shadow:0 0 0 1px rgba(0,0,0,.2);transition:transform .15s cubic-bezier(.2,.8,.3,1.4),box-shadow .15s}
+.dot:hover{transform:scale(1.2)}
+.dot.on{box-shadow:0 0 0 2.5px var(--navy);transform:scale(1.08)}
+.dot.rainbow{background:conic-gradient(#f44,#fc3,#4d4,#3cf,#74f,#f4c,#f44);box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+.dot.rainbow i{position:absolute;inset:6px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px #fff}
+.dot.rainbow.on{box-shadow:0 0 0 2.5px var(--navy)}
+#pop .chips{display:flex;flex-wrap:wrap;gap:6px}
+#pop .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}#pop .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}#pop .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+.chip{min-height:34px;padding:0 11px;border-radius:10px;background:#fff;border:1px solid rgba(0,4,85,.16);color:var(--navy);
+  display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:700;line-height:1.15;text-align:center;
+  transition:transform .15s cubic-bezier(.2,.8,.3,1.3),background .15s,color .15s,box-shadow .15s,border-color .15s}
+.chip:hover{transform:translateY(-2px);border-color:var(--navy);box-shadow:0 6px 12px -4px rgba(0,4,85,.35)}
+.chip:active{transform:scale(.96)}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 6px 14px -4px rgba(0,4,85,.6)}
+.chip.icon{padding:0;height:42px}.chip svg{width:24px;height:24px;flex:none}
+.chip.tall{flex-direction:column;height:62px;gap:3px;font-size:12px}.chip.tall svg{width:26px;height:26px}
+.chip.dash{width:68px;padding:0}.chip.dash svg{width:44px;height:10px}
+#pop .tl .chip{justify-content:flex-start;text-align:left;padding:7px 10px;font-size:12px;min-height:36px}
+#pop .more{max-height:0;overflow:hidden;opacity:0;transition:max-height .28s ease,opacity .2s,margin .2s}
+#pop .more.open{max-height:130px;opacity:1;margin-top:8px}
+#pop .more .grid4{margin-bottom:0}
+#pop .morebtn{margin-top:2px;padding:4px 2px;font-size:12px;font-weight:700;color:var(--navy);opacity:.75;transition:opacity .15s,transform .15s}
+#pop .morebtn::after{content:' ▾'}#pop .morebtn:hover{opacity:1;transform:translateX(2px)}
+#pop .row{display:flex;align-items:center;gap:10px}
+#pop .row b{min-width:46px;text-align:center;font-weight:700;font-size:12px;background:#fff;border:1px solid rgba(0,4,85,.14);border-radius:8px;padding:3px 0}
+#pop input[type=range],#cp input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;cursor:pointer;--p:50%}
+#pop input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--navy) var(--p),rgba(0,4,85,.15) var(--p))}
+#pop input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:rgba(0,4,85,.15)}
+#pop input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:var(--navy)}
+#pop input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3.5px solid var(--navy);margin-top:-6px;transition:transform .15s,box-shadow .15s;box-shadow:0 2px 5px rgba(0,4,85,.3)}
+#pop input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#fff;border:3.5px solid var(--navy)}
+#pop input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.18);box-shadow:0 0 0 6px rgba(0,4,85,.12)}
+#pop .prev{height:62px;border-radius:12px;background:#fff;border:1px solid rgba(0,4,85,.1);margin-bottom:13px;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background-image:linear-gradient(45deg,#f1f2f8 25%,transparent 25%,transparent 75%,#f1f2f8 75%),linear-gradient(45deg,#f1f2f8 25%,transparent 25%,transparent 75%,#f1f2f8 75%);background-size:12px 12px;background-position:0 0,6px 6px}
+#pop .prev.small{height:38px;margin:13px 0 0}#pop .prev svg{width:100%;height:100%}
+#pop .prev.tx{font-weight:600;white-space:nowrap}
+#pop .eprev{height:112px;border-radius:12px;background:#fff;border:1px solid rgba(0,4,85,.1);margin-bottom:13px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#pop .eprev i{display:block;border-radius:50%;border:2px solid var(--navy);background:rgba(0,4,85,.07);transition:width .1s,height .1s}
+#pop p.hint{font-size:11.5px;font-weight:500;line-height:1.45;margin-top:12px;padding:8px 10px;border-radius:10px;background:rgba(0,4,85,.05);color:rgba(0,4,85,.85)}
+
+/* ── Colour picker ── */
+#cp{position:fixed;z-index:80;width:244px;padding:12px;border-radius:18px;background:#fff;border:1px solid rgba(0,4,85,.1);
+  box-shadow:0 24px 50px -10px rgba(0,4,85,.45),0 2px 8px rgba(0,4,85,.14);touch-action:none}
+#cp[hidden]{display:none}#cp.in{animation:popIn .18s cubic-bezier(.2,.9,.3,1.15)}
+.cp-sv{position:relative;height:158px;border-radius:12px;cursor:crosshair;touch-action:none;
+  background:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,hsl(var(--h,0),100%,50%))}
+.cp-hue{position:relative;height:14px;margin:14px 2px 14px;border-radius:7px;cursor:pointer;touch-action:none;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+.cp-sv i,.cp-hue i{position:absolute;width:18px;height:18px;border-radius:50%;border:3px solid #fff;transform:translate(-50%,-50%);box-shadow:0 1px 5px rgba(0,0,0,.55);pointer-events:none;transition:transform .12s}
+.cp-hue i{top:50%}.cp-sv:active i,.cp-hue:active i{transform:translate(-50%,-50%) scale(1.15)}
+.cp-row{display:flex;gap:8px;align-items:center}
+.cp-prev{width:36px;height:36px;border-radius:10px;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.cp-field{flex:1;display:flex;align-items:center;height:36px;border:1px solid rgba(0,4,85,.2);border-radius:10px;padding:0 10px;gap:4px;transition:border-color .15s,box-shadow .15s}
+.cp-field:focus-within{border-color:var(--navy);box-shadow:0 0 0 3px rgba(0,4,85,.12)}
+.cp-field b{opacity:.5;font-weight:700}
+.cp-hex{width:100%;border:0;outline:0;background:transparent;font:700 14px 'Courier New',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);-webkit-user-select:text;user-select:text}
+.cp-eye{width:36px;height:36px;border-radius:10px;border:1px solid rgba(0,4,85,.2);color:var(--navy);display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s}
+.cp-eye[hidden]{display:none}.cp-eye:hover{background:#EEF0FF;transform:translateY(-1px)}.cp-eye svg{width:18px;height:18px}
+
+/* ── Geometry hint pill ── */
+#hint{position:fixed;left:50%;top:74px;transform:translateX(-50%);z-index:56;max-width:min(92vw,560px);text-align:center;pointer-events:none;
+  background:var(--navy);color:#fff;font-weight:700;font-size:13px;padding:8px 18px;border-radius:20px;box-shadow:0 8px 20px rgba(0,4,85,.35);animation:fadeUp .2s ease-out}
+#hint[hidden]{display:none}
+/* ── Sidebar ── */
+#scrim{position:fixed;inset:60px 0 0 0;background:rgba(0,0,0,.25);z-index:70}
+#scrim[hidden]{display:none}
+#sidebar{position:fixed;top:60px;right:0;bottom:0;width:260px;background:#fff;z-index:75;padding:12px 0;
+  box-shadow:-4px 0 14px rgba(0,0,0,.2);transform:translateX(105%);transition:transform .22s ease;overflow:auto}
+#sidebar.open{transform:none}
+#sidebar h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:14px 18px 6px;opacity:.7}
+#sidebar .nav{display:block;width:100%;text-align:left;padding:13px 18px;font:700 16px var(--font);color:var(--navy);text-decoration:none}
+#sidebar .nav:hover{background:#EEF0FF}
+#sidebar .nav.current{background:var(--navy);color:#fff}
+#sidebar .nav.disabled{opacity:.5;cursor:not-allowed}
+#sidebar .nav small{font-weight:500;font-size:11px;margin-left:6px}
+
+/* ── Modal & toast ── */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:90;display:flex;align-items:center;justify-content:center}
+#modal[hidden]{display:none}
+#modal .box{background:#fff;border-radius:12px;padding:22px;max-width:340px;width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+#modal p{font-size:16px;font-weight:700;margin-bottom:16px}
+#modal .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#modal button{height:38px;padding:0 16px;border-radius:6px;border:.5px solid var(--navy);background:#fff;font-weight:700}
+#modal button.primary{background:var(--navy);color:#fff}
+#toast{position:fixed;left:50%;bottom:calc(var(--bar-h,84px) + 16px);transform:translateX(-50%);background:rgba(0,4,85,.92);color:#fff;
+  padding:7px 14px;border-radius:16px;font-size:13px;font-weight:700;z-index:95;pointer-events:none}
+#toast[hidden]{display:none}
+
+/* ── Hover & motion polish ── */
+#avatar{transition:transform .2s cubic-bezier(.2,.8,.3,1.4)}#avatar:hover{transform:scale(1.08)}
+#sidebarBtn{transition:background .15s,transform .15s}#sidebarBtn:active{transform:scale(.92)}
+.bb{transition:transform .15s cubic-bezier(.2,.8,.3,1.3),background .15s,box-shadow .15s,opacity .15s}
+.bb:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,4,85,.22)}
+.bb.flat:hover:not(:disabled){transform:scale(1.14);box-shadow:none}
+.bb:active:not(:disabled){transform:scale(.93)}
+#delBtn:hover:not(:disabled){color:#c62828;background:rgba(198,40,40,.1)}
+#sidebar .nav{transition:background .15s,padding-left .18s,color .15s}
+#sidebar .nav:not(.disabled):not(.current):hover{padding-left:26px;background:#EEF0FF}
+#modal .box{animation:popIn .18s cubic-bezier(.2,.9,.3,1.15)}
+#modal button{transition:transform .15s,box-shadow .15s,background .15s}
+#modal button:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,4,85,.25)}
+#modal button.primary:hover{background:#0a0f7a}
+#modal input.num{flex:1;min-width:90px;height:38px;border:1px solid rgba(0,4,85,.3);border-radius:8px;padding:0 10px;font:700 15px var(--font);color:var(--navy);outline:0;-webkit-user-select:text;user-select:text}
+#modal input.num:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(0,4,85,.14)}
+#toast{animation:fadeUp .18s ease-out}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+</style>
 </head>
 <body>
-  <p>Redirecting to <a href="whiteboard.html">Whiteboard</a>…</p>
+
+<header id="topbar">
+  <div id="avatar" title="Account"><svg viewBox="0 0 60 60" width="60" height="60" aria-hidden="true"><g filter="url(#filter1_d_408_159)">
+<path d="M10 30C10 18.9543 18.9543 10 30 10C41.0457 10 50 18.9543 50 30C50 41.0457 41.0457 50 30 50C18.9543 50 10 41.0457 10 30Z" fill="url(#paint0_linear_408_159)" shape-rendering="crispEdges" />
+<path d="M18.93 36V25.47H23.22C24.05 25.47 24.75 25.605 25.32 25.875C25.89 26.145 26.325 26.525 26.625 27.015C26.935 27.495 27.09 28.055 27.09 28.695C27.09 29.345 26.89 29.92 26.49 30.42C26.09 30.91 25.535 31.24 24.825 31.41C25.345 31.58 25.805 31.875 26.205 32.295C26.605 32.715 26.94 33.24 27.21 33.87C27.48 34.49 27.66 35.2 27.75 36H25.02C24.97 35.31 24.84 34.695 24.63 34.155C24.42 33.615 24.095 33.18 23.655 32.85C23.385 32.64 23.07 32.48 22.71 32.37C22.35 32.25 21.935 32.185 21.465 32.175V36H18.93ZM21.465 30.15H23.07C23.54 30.15 23.895 30.025 24.135 29.775C24.385 29.515 24.51 29.19 24.51 28.8C24.51 28.42 24.385 28.115 24.135 27.885C23.885 27.645 23.53 27.525 23.07 27.525H21.465V30.15ZM29.3011 25.47H32.2861L35.7661 34.02L34.7311 34.17L38.2261 25.47H41.1961V36H38.6611V27.285L39.5011 27.42L36.2761 36H34.2361L31.0111 27.42L31.8361 27.285V36H29.3011V25.47Z" fill="#000230" />
+</g>
+<defs><filter id="filter1_d_408_159" x="2" y="2" width="56" height="56" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix" />
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+<feOffset />
+<feGaussianBlur stdDeviation="4" />
+<feComposite in2="hardAlpha" operator="out" />
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0" />
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_408_159" />
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_408_159" result="shape" />
+</filter>
+<linearGradient id="paint0_linear_408_159" x1="13.218" y1="10" x2="46.782" y2="50" gradientUnits="userSpaceOnUse">
+<stop stop-color="white" />
+<stop offset="1" stop-color="#B3B3B3" />
+</linearGradient>
+</defs></svg></div>
+  <h1 id="title" aria-label="Whiteboard"><svg viewBox="655 16 130 25" fill="#fff" aria-hidden="true"><path d="M658.143 41L655.559 16.9375H660.262L661.588 32.127L662.941 16.9375H667.426L668.711 32.127L669.996 16.9375H674.754L672.129 41H666.359L665.156 29.4199L664.008 41H658.143ZM676.189 41V16.9375H680.975V25.5371H683.244V16.9375H688.029V41H683.244V30.0898H680.975V41H676.189ZM689.943 41V16.9375H694.592V41H689.943ZM698.57 41V21.5586H695.713V16.9375H706.24V21.5586H703.383V41H698.57ZM707.58 41V16.9375H717.205V21.5859H712.475V26.2754H717.014V30.8008H712.475V36.3105H717.52V41H707.58ZM719.119 41V16.9375H725.641C727.391 16.9375 728.662 17.3659 729.455 18.2227C730.257 19.0703 730.658 20.474 730.658 22.4336V23.4863C730.658 24.6165 730.453 25.5326 730.043 26.2344C729.642 26.9362 729.027 27.3965 728.197 27.6152C729.282 27.8887 730.007 28.5312 730.371 29.543C730.745 30.5456 730.932 31.7715 730.932 33.2207C730.932 34.7793 730.786 36.1419 730.494 37.3086C730.202 38.4753 729.674 39.3822 728.908 40.0293C728.143 40.6764 727.053 41 725.641 41H719.119ZM723.822 26.002H724.807C725.253 26.002 725.54 25.8288 725.668 25.4824C725.796 25.1361 725.859 24.7214 725.859 24.2383V21.8184C725.859 21.0436 725.518 20.6562 724.834 20.6562H723.822V26.002ZM724.301 36.7617C725.549 36.7617 726.174 36.1693 726.174 34.9844V31.9766C726.174 31.293 726.069 30.7552 725.859 30.3633C725.659 29.9622 725.276 29.7617 724.711 29.7617H723.822V36.7344C724.023 36.7526 724.182 36.7617 724.301 36.7617ZM738.26 41.2188C736.337 41.2188 734.865 40.64 733.844 39.4824C732.832 38.3158 732.326 36.6341 732.326 34.4375V23.0078C732.326 20.9479 732.827 19.3848 733.83 18.3184C734.842 17.252 736.318 16.7188 738.26 16.7188C740.201 16.7188 741.673 17.252 742.676 18.3184C743.688 19.3848 744.193 20.9479 744.193 23.0078V34.4375C744.193 36.6341 743.683 38.3158 742.662 39.4824C741.65 40.64 740.183 41.2188 738.26 41.2188ZM738.301 36.7891C739.03 36.7891 739.395 36.0827 739.395 34.6699V22.9258C739.395 21.7409 739.039 21.1484 738.328 21.1484C737.526 21.1484 737.125 21.7546 737.125 22.9668V34.6973C737.125 35.4447 737.216 35.9824 737.398 36.3105C737.581 36.6296 737.882 36.7891 738.301 36.7891ZM745.479 41L747.803 16.9375H755.965L758.248 41H753.695L753.354 37.1172H750.455L750.154 41H745.479ZM750.797 33.2754H752.984L751.932 21.0391H751.713L750.797 33.2754ZM759.725 41V16.9375H767.107C768.338 16.9375 769.268 17.2201 769.896 17.7852C770.525 18.3411 770.945 19.125 771.154 20.1367C771.373 21.1393 771.482 22.3197 771.482 23.6777C771.482 24.9902 771.314 26.0384 770.977 26.8223C770.648 27.6061 770.024 28.1484 769.104 28.4492C769.86 28.6042 770.389 28.9824 770.689 29.584C770.999 30.1764 771.154 30.9466 771.154 31.8945V41H766.41V31.5801C766.41 30.8783 766.264 30.4453 765.973 30.2812C765.69 30.1081 765.23 30.0215 764.592 30.0215V41H759.725ZM764.619 25.8516H765.781C766.447 25.8516 766.779 25.127 766.779 23.6777C766.779 22.7389 766.706 22.1237 766.561 21.832C766.415 21.5404 766.141 21.3945 765.74 21.3945H764.619V25.8516ZM773.068 41V16.9375H779.686C781.417 16.9375 782.721 17.4206 783.596 18.3867C784.471 19.3438 784.908 20.7474 784.908 22.5977V33.8633C784.908 36.1419 784.507 37.901 783.705 39.1406C782.912 40.3802 781.518 41 779.521 41H773.068ZM777.908 36.748H778.742C779.626 36.748 780.068 36.3197 780.068 35.4629V23.0488C780.068 22.2467 779.959 21.7318 779.74 21.5039C779.531 21.2669 779.098 21.1484 778.441 21.1484H777.908V36.748Z" fill="#fff" />
+</svg></h1>
+  <button id="sidebarBtn" title="Switch between Whiteboard and Graph" aria-label="Open sidebar"><svg viewBox="1399 19 22 22" fill="none" aria-hidden="true"><path d="M1413.33 20V40M1417.78 20H1402.22C1400.99 20 1400 20.9949 1400 22.2222V37.7778C1400 39.0051 1400.99 40 1402.22 40H1417.78C1419.01 40 1420 39.0051 1420 37.7778V22.2222C1420 20.9949 1419.01 20 1417.78 20Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+</svg></button>
+</header>
+
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <textarea id="ted" spellcheck="false" wrap="off"></textarea>
+  <div id="selbar" hidden>
+    <button id="selColor" title="Colour"><span></span></button>
+    <button id="selDup" title="Duplicate (Ctrl+D)" aria-label="Duplicate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+    <button id="selDel" title="Delete (Del)" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
+  </div>
+</div>
+
+<div id="pop" hidden></div>
+<div id="cp" hidden aria-label="Colour picker"></div>
+<div id="hint" hidden></div>
+
+<footer id="bbar">
+  <nav id="tools" aria-label="Tools">
+    <button class="tool" data-tool="select"   title="Select (V)"   aria-label="Select"><svg viewBox="20 308 60 65" fill="none" aria-hidden="true"><path d="M61.0532 336.263L50.2962 336.981C49.9825 337.002 49.6962 337.17 49.5215 337.436L43.5308 346.542C43.0126 347.33 41.8107 347.046 41.6871 346.107L38.0096 318.167C37.8899 317.257 38.9143 316.656 39.6298 317.217L61.6044 334.423C62.343 335.001 61.9837 336.201 61.0532 336.263Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+<path d="M27.1797 356.578C27.1797 356.083 27.3021 355.633 27.5469 355.227C27.7969 354.82 28.1302 354.497 28.5469 354.258C28.9688 354.013 29.4323 353.891 29.9375 353.891H35.6875V355.531H29.9375C29.6354 355.531 29.375 355.638 29.1562 355.852C28.9375 356.065 28.8281 356.323 28.8281 356.625V357.391C28.8281 357.667 28.9375 357.904 29.1562 358.102C29.375 358.299 29.6354 358.398 29.9375 358.398H33.4766C33.987 358.398 34.4505 358.521 34.8672 358.766C35.2839 359.005 35.6146 359.331 35.8594 359.742C36.1094 360.148 36.2344 360.599 36.2344 361.094V362.305C36.2344 362.799 36.1094 363.253 35.8594 363.664C35.6146 364.07 35.2839 364.396 34.8672 364.641C34.4505 364.88 33.987 365 33.4766 365H27.1875V363.352H33.4766C33.7839 363.352 34.0443 363.25 34.2578 363.047C34.4766 362.839 34.5859 362.589 34.5859 362.297V361.102C34.5859 360.81 34.4766 360.56 34.2578 360.352C34.0443 360.143 33.7839 360.039 33.4766 360.039H29.9375C29.4323 360.039 28.9688 359.922 28.5469 359.688C28.1302 359.448 27.7969 359.128 27.5469 358.727C27.3021 358.326 27.1797 357.883 27.1797 357.398V356.578ZM38.1172 358.578C38.1172 358.115 38.2865 357.721 38.625 357.398C38.9635 357.07 39.3698 356.906 39.8438 356.906H43.2188C43.651 356.906 44.0417 357.013 44.3906 357.227C44.7448 357.435 45.026 357.719 45.2344 358.078C45.4479 358.432 45.5547 358.826 45.5547 359.258V359.484C45.5547 359.911 45.4479 360.302 45.2344 360.656C45.026 361.005 44.7448 361.286 44.3906 361.5C44.0417 361.708 43.651 361.812 43.2188 361.812H40.7031V360.172H43.2344C43.4219 360.172 43.5807 360.104 43.7109 359.969C43.8464 359.833 43.9141 359.669 43.9141 359.477V359.258C43.9141 359.06 43.8464 358.893 43.7109 358.758C43.5807 358.622 43.4219 358.555 43.2344 358.555H39.7656V362.711C39.7656 362.888 39.8255 363.039 39.9453 363.164C40.0651 363.289 40.2109 363.352 40.3828 363.352H44.9844V365H40.3828C39.9661 365 39.5859 364.898 39.2422 364.695C38.8984 364.487 38.625 364.211 38.4219 363.867C38.2188 363.518 38.1172 363.135 38.1172 362.719V358.578ZM47.3516 353.891H49V365H47.3516V353.891ZM50.8828 358.578C50.8828 358.115 51.0521 357.721 51.3906 357.398C51.7292 357.07 52.1354 356.906 52.6094 356.906H55.9844C56.4167 356.906 56.8073 357.013 57.1562 357.227C57.5104 357.435 57.7917 357.719 58 358.078C58.2135 358.432 58.3203 358.826 58.3203 359.258V359.484C58.3203 359.911 58.2135 360.302 58 360.656C57.7917 361.005 57.5104 361.286 57.1562 361.5C56.8073 361.708 56.4167 361.812 55.9844 361.812H53.4688V360.172H56C56.1875 360.172 56.3464 360.104 56.4766 359.969C56.612 359.833 56.6797 359.669 56.6797 359.477V359.258C56.6797 359.06 56.612 358.893 56.4766 358.758C56.3464 358.622 56.1875 358.555 56 358.555H52.5312V362.711C52.5312 362.888 52.5911 363.039 52.7109 363.164C52.8307 363.289 52.9766 363.352 53.1484 363.352H57.75V365H53.1484C52.7318 365 52.3516 364.898 52.0078 364.695C51.6641 364.487 51.3906 364.211 51.1875 363.867C50.9844 363.518 50.8828 363.135 50.8828 362.719V358.578ZM60.0391 359.828C60.0391 359.292 60.1745 358.802 60.4453 358.359C60.7161 357.917 61.0781 357.565 61.5312 357.305C61.9844 357.039 62.487 356.906 63.0391 356.906H67.5938V358.555H63.0391C62.6693 358.555 62.3516 358.682 62.0859 358.938C61.8203 359.188 61.6875 359.492 61.6875 359.852V362.047C61.6875 362.406 61.8177 362.714 62.0781 362.969C62.3438 363.224 62.6641 363.352 63.0391 363.352H67.5938V365H63.0391C62.487 365 61.9844 364.867 61.5312 364.602C61.0781 364.336 60.7161 363.982 60.4453 363.539C60.1745 363.091 60.0391 362.599 60.0391 362.062V359.828ZM69.0078 356.906H70.0625V353.891H71.7109V356.906H74.2031V358.555H71.7109V362.703C71.7109 362.88 71.7786 363.034 71.9141 363.164C72.0547 363.289 72.2214 363.352 72.4141 363.352H74.2031V365H72.3906C71.9635 365 71.5729 364.898 71.2188 364.695C70.8698 364.487 70.5885 364.211 70.375 363.867C70.1667 363.518 70.0625 363.133 70.0625 362.711V358.555H69.0078V356.906Z" fill="currentColor" />
+</svg></button>
+    <button class="tool" data-tool="move"     title="Move canvas (H)" aria-label="Move"><svg viewBox="20 378 60 65" fill="none" aria-hidden="true"><image class="rn" href="assets/icons/move.png" x="35.0" y="387.0" width="30" height="30"/><image class="rw" href="assets/icons/move-w.png" x="35.0" y="387.0" width="30" height="30"/><path d="M32.1172 423.891H33.625L37.2109 428.273L40.7969 423.891H42.3047V435H40.6562V426.695L37.8984 430.039H36.5312L33.7656 426.695V435H32.1172V423.891ZM44.2578 429.828C44.2578 429.292 44.388 428.802 44.6484 428.359C44.9141 427.917 45.2682 427.565 45.7109 427.305C46.1536 427.039 46.6432 426.906 47.1797 426.906H48.9453C49.4818 426.906 49.9714 427.039 50.4141 427.305C50.8568 427.565 51.2083 427.917 51.4688 428.359C51.7344 428.802 51.8672 429.292 51.8672 429.828V432.078C51.8672 432.615 51.7344 433.104 51.4688 433.547C51.2083 433.99 50.8568 434.344 50.4141 434.609C49.9714 434.87 49.4818 435 48.9453 435H47.1797C46.6432 435 46.1536 434.87 45.7109 434.609C45.2682 434.344 44.9141 433.99 44.6484 433.547C44.388 433.104 44.2578 432.615 44.2578 432.078V429.828ZM45.9062 432.062C45.9062 432.417 46.0312 432.721 46.2812 432.977C46.5312 433.227 46.8307 433.352 47.1797 433.352H48.9453C49.2995 433.352 49.599 433.227 49.8438 432.977C50.0938 432.721 50.2188 432.417 50.2188 432.062V429.844C50.2188 429.49 50.0938 429.188 49.8438 428.938C49.599 428.682 49.2995 428.555 48.9453 428.555H47.1797C46.8307 428.555 46.5312 428.682 46.2812 428.938C46.0312 429.188 45.9062 429.49 45.9062 429.844V432.062ZM54.5391 426.906L56.7031 432.617L58.8516 426.906H60.5859L57.5 435H55.8828L52.8047 426.906H54.5391ZM61.6797 428.578C61.6797 428.115 61.849 427.721 62.1875 427.398C62.526 427.07 62.9323 426.906 63.4062 426.906H66.7812C67.2135 426.906 67.6042 427.013 67.9531 427.227C68.3073 427.435 68.5885 427.719 68.7969 428.078C69.0104 428.432 69.1172 428.826 69.1172 429.258V429.484C69.1172 429.911 69.0104 430.302 68.7969 430.656C68.5885 431.005 68.3073 431.286 67.9531 431.5C67.6042 431.708 67.2135 431.812 66.7812 431.812H64.2656V430.172H66.7969C66.9844 430.172 67.1432 430.104 67.2734 429.969C67.4089 429.833 67.4766 429.669 67.4766 429.477V429.258C67.4766 429.06 67.4089 428.893 67.2734 428.758C67.1432 428.622 66.9844 428.555 66.7969 428.555H63.3281V432.711C63.3281 432.888 63.388 433.039 63.5078 433.164C63.6276 433.289 63.7734 433.352 63.9453 433.352H68.5469V435H63.9453C63.5286 435 63.1484 434.898 62.8047 434.695C62.4609 434.487 62.1875 434.211 61.9844 433.867C61.7812 433.518 61.6797 433.135 61.6797 432.719V428.578Z" fill="currentColor" />
+</svg></button>
+    <button class="tool active" data-tool="pen"      title="Pen (P)"      aria-label="Pen"><svg viewBox="20 448 60 65" fill="none" aria-hidden="true"><mask id="stroke0_408_159" maskUnits="userSpaceOnUse" x="33" y="455" width="34" height="34" fill="black">
+<rect fill="white" x="33" y="455" width="34" height="34" />
+<path d="M56.6627 458.414L37.6994 477.378C37.5048 477.572 37.4074 477.669 37.3405 477.788C37.2735 477.906 37.2401 478.04 37.1733 478.307L35.2021 486.192C35.1119 486.553 35.0667 486.733 35.1668 486.833C35.2669 486.933 35.4474 486.888 35.8085 486.798L43.6933 484.827C43.9604 484.76 44.0939 484.727 44.2122 484.66C44.3305 484.593 44.4278 484.495 44.6225 484.301L44.6225 484.301L63.5858 465.337C64.2525 464.671 64.5858 464.337 64.5858 463.923C64.5858 463.509 64.2525 463.176 63.5858 462.509L59.4911 458.414C58.8245 457.748 58.4911 457.414 58.0769 457.414C57.6627 457.414 57.3294 457.748 56.6627 458.414Z" />
+</mask>
+<path d="M37.6994 477.378L56.6627 458.414C57.3294 457.748 57.6627 457.414 58.0769 457.414C58.4911 457.414 58.8245 457.748 59.4911 458.414L63.5858 462.509C64.2525 463.176 64.5858 463.509 64.5858 463.923C64.5858 464.337 64.2525 464.671 63.5858 465.337L44.6225 484.301L44.6225 484.301C44.4278 484.495 44.3305 484.593 44.2122 484.66C44.0939 484.727 43.9604 484.76 43.6933 484.827L35.8085 486.798C35.4474 486.888 35.2669 486.933 35.1668 486.833C35.0667 486.733 35.1119 486.553 35.2021 486.192L37.1733 478.307C37.2401 478.04 37.2735 477.906 37.3405 477.788C37.4074 477.669 37.5048 477.572 37.6994 477.378Z" stroke-width="4" stroke="currentColor" mask="url(#stroke0_408_159)" />
+<path d="M36.5547 493.891H42.4297C42.9349 493.891 43.3932 494.016 43.8047 494.266C44.2214 494.51 44.5521 494.839 44.7969 495.25C45.0469 495.661 45.1719 496.12 45.1719 496.625V497.734C45.1719 498.229 45.0469 498.682 44.7969 499.094C44.5521 499.5 44.2214 499.826 43.8047 500.07C43.3932 500.31 42.9349 500.43 42.4297 500.43H39.1406V498.789H42.4297C42.737 498.789 42.9974 498.685 43.2109 498.477C43.4245 498.268 43.5312 498.013 43.5312 497.711V496.625C43.5312 496.323 43.4245 496.065 43.2109 495.852C42.9974 495.638 42.737 495.531 42.4297 495.531H38.2031V505H36.5547V493.891ZM46.9297 498.578C46.9297 498.115 47.099 497.721 47.4375 497.398C47.776 497.07 48.1823 496.906 48.6562 496.906H52.0312C52.4635 496.906 52.8542 497.013 53.2031 497.227C53.5573 497.435 53.8385 497.719 54.0469 498.078C54.2604 498.432 54.3672 498.826 54.3672 499.258V499.484C54.3672 499.911 54.2604 500.302 54.0469 500.656C53.8385 501.005 53.5573 501.286 53.2031 501.5C52.8542 501.708 52.4635 501.812 52.0312 501.812H49.5156V500.172H52.0469C52.2344 500.172 52.3932 500.104 52.5234 499.969C52.6589 499.833 52.7266 499.669 52.7266 499.477V499.258C52.7266 499.06 52.6589 498.893 52.5234 498.758C52.3932 498.622 52.2344 498.555 52.0469 498.555H48.5781V502.711C48.5781 502.888 48.638 503.039 48.7578 503.164C48.8776 503.289 49.0234 503.352 49.1953 503.352H53.7969V505H49.1953C48.7786 505 48.3984 504.898 48.0547 504.695C47.7109 504.487 47.4375 504.211 47.2344 503.867C47.0312 503.518 46.9297 503.135 46.9297 502.719V498.578ZM56.1641 498.547C56.1641 498.094 56.3255 497.708 56.6484 497.391C56.9766 497.068 57.3698 496.906 57.8281 496.906H60.6797C61.2161 496.906 61.7057 497.039 62.1484 497.305C62.5911 497.565 62.9427 497.917 63.2031 498.359C63.4688 498.802 63.6016 499.292 63.6016 499.828V505H61.9531V499.852C61.9531 499.487 61.8281 499.177 61.5781 498.922C61.3333 498.667 61.0339 498.539 60.6797 498.539H57.8125V505H56.1641V498.547Z" fill="currentColor" />
+</svg></button>
+    <button class="tool" data-tool="eraser"   title="Eraser (E)"   aria-label="Eraser"><svg viewBox="20 518 60 65" fill="none" aria-hidden="true"><path d="M36.3205 550.397L41.6027 555.679C43.3634 557.44 46.2377 557.44 47.9834 555.679L63.6795 539.983C65.4402 538.223 65.4402 535.348 63.6795 533.603L58.3973 528.321C56.6366 526.56 53.7623 526.56 52.0166 528.321L36.3205 544.017C34.5598 545.762 34.5598 548.637 36.3205 550.397Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+<path d="M42.6543 537.682L54.3172 549.345" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+<path d="M26.3203 563.891H34.9375V565.531H27.9688V573.352H34.9375V575H26.3203V563.891ZM28.9062 568.398H34.9375V570.039H28.9062V568.398ZM36.8203 569.172C36.8203 568.755 36.9245 568.375 37.1328 568.031C37.3464 567.688 37.6276 567.414 37.9766 567.211C38.3307 567.008 38.7214 566.906 39.1484 566.906H40.9531V568.547H39.1484C38.9609 568.547 38.7995 568.612 38.6641 568.742C38.5339 568.867 38.4688 569.021 38.4688 569.203V575H36.8203V569.172ZM42.2109 569.812C42.2109 569.276 42.3411 568.789 42.6016 568.352C42.8672 567.914 43.2214 567.565 43.6641 567.305C44.1068 567.039 44.5964 566.906 45.1328 566.906H49.6484V575H48V568.555H45.1328C44.7839 568.555 44.4844 568.68 44.2344 568.93C43.9844 569.174 43.8594 569.474 43.8594 569.828V572.062C43.8594 572.417 43.9844 572.721 44.2344 572.977C44.4844 573.227 44.7839 573.352 45.1328 573.352H47.0625V575H45.1328C44.5964 575 44.1068 574.87 43.6641 574.609C43.2214 574.344 42.8672 573.99 42.6016 573.547C42.3411 573.104 42.2109 572.615 42.2109 572.078V569.812ZM51.4453 569.18C51.4453 568.758 51.5495 568.375 51.7578 568.031C51.9714 567.688 52.2526 567.414 52.6016 567.211C52.9557 567.008 53.3464 566.906 53.7734 566.906H58.5234V568.555H53.7734C53.5859 568.555 53.4245 568.617 53.2891 568.742C53.1589 568.862 53.0938 569.008 53.0938 569.18V569.375C53.0938 569.552 53.1589 569.703 53.2891 569.828C53.4245 569.953 53.5859 570.016 53.7734 570.016H56.7266C57.1536 570.016 57.5417 570.12 57.8906 570.328C58.2448 570.531 58.526 570.805 58.7344 571.148C58.9427 571.492 59.0469 571.875 59.0469 572.297V572.719C59.0469 573.135 58.9427 573.518 58.7344 573.867C58.526 574.211 58.2448 574.487 57.8906 574.695C57.5417 574.898 57.1536 575 56.7266 575H51.8125V573.352H56.7266C56.9141 573.352 57.0729 573.289 57.2031 573.164C57.3385 573.039 57.4062 572.888 57.4062 572.711V572.305C57.4062 572.122 57.3385 571.969 57.2031 571.844C57.0729 571.719 56.9141 571.656 56.7266 571.656H53.7734C53.3464 571.656 52.9557 571.555 52.6016 571.352C52.2526 571.143 51.9714 570.867 51.7578 570.523C51.5495 570.174 51.4453 569.792 51.4453 569.375V569.18ZM60.8516 568.578C60.8516 568.115 61.0208 567.721 61.3594 567.398C61.6979 567.07 62.1042 566.906 62.5781 566.906H65.9531C66.3854 566.906 66.776 567.013 67.125 567.227C67.4792 567.435 67.7604 567.719 67.9688 568.078C68.1823 568.432 68.2891 568.826 68.2891 569.258V569.484C68.2891 569.911 68.1823 570.302 67.9688 570.656C67.7604 571.005 67.4792 571.286 67.125 571.5C66.776 571.708 66.3854 571.812 65.9531 571.812H63.4375V570.172H65.9688C66.1562 570.172 66.3151 570.104 66.4453 569.969C66.5807 569.833 66.6484 569.669 66.6484 569.477V569.258C66.6484 569.06 66.5807 568.893 66.4453 568.758C66.3151 568.622 66.1562 568.555 65.9688 568.555H62.5V572.711C62.5 572.888 62.5599 573.039 62.6797 573.164C62.7995 573.289 62.9453 573.352 63.1172 573.352H67.7188V575H63.1172C62.7005 575 62.3203 574.898 61.9766 574.695C61.6328 574.487 61.3594 574.211 61.1562 573.867C60.9531 573.518 60.8516 573.135 60.8516 572.719V568.578ZM70.0859 569.172C70.0859 568.755 70.1901 568.375 70.3984 568.031C70.612 567.688 70.8932 567.414 71.2422 567.211C71.5964 567.008 71.987 566.906 72.4141 566.906H74.2188V568.547H72.4141C72.2266 568.547 72.0651 568.612 71.9297 568.742C71.7995 568.867 71.7344 569.021 71.7344 569.203V575H70.0859V569.172Z" fill="currentColor" />
+</svg></button>
+    <button class="tool" data-tool="shapes"   title="Shapes (S)"   aria-label="Shapes"><svg viewBox="20 588 60 65" fill="none" aria-hidden="true"><mask id="stroke1_408_159" fill="white">
+<path d="M51 614C51 613.448 51.4477 613 52 613H64C64.5523 613 65 613.448 65 614V626C65 626.552 64.5523 627 64 627H52C51.4477 627 51 626.552 51 626V614Z" />
+</mask>
+<rect x="51" y="613" width="14" height="14" rx="1" stroke-width="4" stroke="currentColor" mask="url(#stroke1_408_159)" />
+<circle cx="42" cy="620" r="6" stroke-width="2" stroke="currentColor" />
+<mask id="stroke2_408_159" fill="white">
+<path d="M49.1056 598.789C49.4741 598.052 50.5259 598.052 50.8944 598.789L53.5 604L56.2764 609.553C56.6088 610.218 56.1253 611 55.382 611H50H44.618C43.8747 611 43.3912 610.218 43.7236 609.553L46.5 604L49.1056 598.789Z" />
+</mask>
+<path d="M53.5 604L50.8944 598.789C50.5259 598.052 49.4741 598.052 49.1056 598.789L46.5 604L43.7236 609.553C43.3912 610.218 43.8747 611 44.618 611H50H55.382C56.1253 611 56.6088 610.218 56.2764 609.553L53.5 604Z" stroke-width="4" stroke="currentColor" mask="url(#stroke2_408_159)" />
+<path d="M22.4297 636.578C22.4297 636.083 22.5521 635.633 22.7969 635.227C23.0469 634.82 23.3802 634.497 23.7969 634.258C24.2188 634.013 24.6823 633.891 25.1875 633.891H30.9375V635.531H25.1875C24.8854 635.531 24.625 635.638 24.4062 635.852C24.1875 636.065 24.0781 636.323 24.0781 636.625V637.391C24.0781 637.667 24.1875 637.904 24.4062 638.102C24.625 638.299 24.8854 638.398 25.1875 638.398H28.7266C29.237 638.398 29.7005 638.521 30.1172 638.766C30.5339 639.005 30.8646 639.331 31.1094 639.742C31.3594 640.148 31.4844 640.599 31.4844 641.094V642.305C31.4844 642.799 31.3594 643.253 31.1094 643.664C30.8646 644.07 30.5339 644.396 30.1172 644.641C29.7005 644.88 29.237 645 28.7266 645H22.4375V643.352H28.7266C29.0339 643.352 29.2943 643.25 29.5078 643.047C29.7266 642.839 29.8359 642.589 29.8359 642.297V641.102C29.8359 640.81 29.7266 640.56 29.5078 640.352C29.2943 640.143 29.0339 640.039 28.7266 640.039H25.1875C24.6823 640.039 24.2188 639.922 23.7969 639.688C23.3802 639.448 23.0469 639.128 22.7969 638.727C22.5521 638.326 22.4297 637.883 22.4297 637.398V636.578ZM33.3672 633.891H35.0156V636.906H37.5625C38.125 636.906 38.6354 637.039 39.0938 637.305C39.5573 637.565 39.9245 637.917 40.1953 638.359C40.4714 638.797 40.6094 639.284 40.6094 639.82V645H38.9609V639.844C38.9609 639.5 38.8203 639.201 38.5391 638.945C38.263 638.685 37.9375 638.555 37.5625 638.555H35.0156V645H33.3672V633.891ZM42.4141 639.812C42.4141 639.276 42.5443 638.789 42.8047 638.352C43.0703 637.914 43.4245 637.565 43.8672 637.305C44.3099 637.039 44.7995 636.906 45.3359 636.906H49.8516V645H48.2031V638.555H45.3359C44.987 638.555 44.6875 638.68 44.4375 638.93C44.1875 639.174 44.0625 639.474 44.0625 639.828V642.062C44.0625 642.417 44.1875 642.721 44.4375 642.977C44.6875 643.227 44.987 643.352 45.3359 643.352H47.2656V645H45.3359C44.7995 645 44.3099 644.87 43.8672 644.609C43.4245 644.344 43.0703 643.99 42.8047 643.547C42.5443 643.104 42.4141 642.615 42.4141 642.078V639.812ZM51.6484 638.555C51.6484 638.102 51.8099 637.714 52.1328 637.391C52.4557 637.068 52.8438 636.906 53.2969 636.906H56.1641C56.7005 636.906 57.1901 637.039 57.6328 637.305C58.0755 637.565 58.4271 637.914 58.6875 638.352C58.9531 638.789 59.0859 639.276 59.0859 639.812V642.078C59.0859 642.615 58.9531 643.104 58.6875 643.547C58.4271 643.99 58.0755 644.344 57.6328 644.609C57.1901 644.87 56.7005 645 56.1641 645H54.2344V643.352H56.1641C56.5182 643.352 56.8177 643.227 57.0625 642.977C57.3125 642.721 57.4375 642.417 57.4375 642.062V639.828C57.4375 639.474 57.3125 639.174 57.0625 638.93C56.8177 638.68 56.5182 638.555 56.1641 638.555H53.2969V648.016H51.6484V638.555ZM60.9609 638.578C60.9609 638.115 61.1302 637.721 61.4688 637.398C61.8073 637.07 62.2135 636.906 62.6875 636.906H66.0625C66.4948 636.906 66.8854 637.013 67.2344 637.227C67.5885 637.435 67.8698 637.719 68.0781 638.078C68.2917 638.432 68.3984 638.826 68.3984 639.258V639.484C68.3984 639.911 68.2917 640.302 68.0781 640.656C67.8698 641.005 67.5885 641.286 67.2344 641.5C66.8854 641.708 66.4948 641.812 66.0625 641.812H63.5469V640.172H66.0781C66.2656 640.172 66.4245 640.104 66.5547 639.969C66.6901 639.833 66.7578 639.669 66.7578 639.477V639.258C66.7578 639.06 66.6901 638.893 66.5547 638.758C66.4245 638.622 66.2656 638.555 66.0781 638.555H62.6094V642.711C62.6094 642.888 62.6693 643.039 62.7891 643.164C62.9089 643.289 63.0547 643.352 63.2266 643.352H67.8281V645H63.2266C62.8099 645 62.4297 644.898 62.0859 644.695C61.7422 644.487 61.4688 644.211 61.2656 643.867C61.0625 643.518 60.9609 643.135 60.9609 642.719V638.578ZM70.0391 639.18C70.0391 638.758 70.1432 638.375 70.3516 638.031C70.5651 637.688 70.8464 637.414 71.1953 637.211C71.5495 637.008 71.9401 636.906 72.3672 636.906H77.1172V638.555H72.3672C72.1797 638.555 72.0182 638.617 71.8828 638.742C71.7526 638.862 71.6875 639.008 71.6875 639.18V639.375C71.6875 639.552 71.7526 639.703 71.8828 639.828C72.0182 639.953 72.1797 640.016 72.3672 640.016H75.3203C75.7474 640.016 76.1354 640.12 76.4844 640.328C76.8385 640.531 77.1198 640.805 77.3281 641.148C77.5365 641.492 77.6406 641.875 77.6406 642.297V642.719C77.6406 643.135 77.5365 643.518 77.3281 643.867C77.1198 644.211 76.8385 644.487 76.4844 644.695C76.1354 644.898 75.7474 645 75.3203 645H70.4062V643.352H75.3203C75.5078 643.352 75.6667 643.289 75.7969 643.164C75.9323 643.039 76 642.888 76 642.711V642.305C76 642.122 75.9323 641.969 75.7969 641.844C75.6667 641.719 75.5078 641.656 75.3203 641.656H72.3672C71.9401 641.656 71.5495 641.555 71.1953 641.352C70.8464 641.143 70.5651 640.867 70.3516 640.523C70.1432 640.174 70.0391 639.792 70.0391 639.375V639.18Z" fill="currentColor" />
+</svg></button>
+    <button class="tool" data-tool="tools"    title="Geometry tools" aria-label="Tools"><svg viewBox="20 658 60 65" fill="none" aria-hidden="true"><image class="rn" href="assets/icons/tools.png" x="35.0" y="667.0" width="30" height="30"/><image class="rw" href="assets/icons/tools-w.png" x="35.0" y="667.0" width="30" height="30"/><path d="M30.3438 703.891H39.3906V705.531H35.6953V715H34.0391V705.531H30.3438V703.891ZM39.3125 709.828C39.3125 709.292 39.4427 708.802 39.7031 708.359C39.9688 707.917 40.3229 707.565 40.7656 707.305C41.2083 707.039 41.6979 706.906 42.2344 706.906H44C44.5365 706.906 45.026 707.039 45.4688 707.305C45.9115 707.565 46.263 707.917 46.5234 708.359C46.7891 708.802 46.9219 709.292 46.9219 709.828V712.078C46.9219 712.615 46.7891 713.104 46.5234 713.547C46.263 713.99 45.9115 714.344 45.4688 714.609C45.026 714.87 44.5365 715 44 715H42.2344C41.6979 715 41.2083 714.87 40.7656 714.609C40.3229 714.344 39.9688 713.99 39.7031 713.547C39.4427 713.104 39.3125 712.615 39.3125 712.078V709.828ZM40.9609 712.062C40.9609 712.417 41.0859 712.721 41.3359 712.977C41.5859 713.227 41.8854 713.352 42.2344 713.352H44C44.3542 713.352 44.6536 713.227 44.8984 712.977C45.1484 712.721 45.2734 712.417 45.2734 712.062V709.844C45.2734 709.49 45.1484 709.188 44.8984 708.938C44.6536 708.682 44.3542 708.555 44 708.555H42.2344C41.8854 708.555 41.5859 708.682 41.3359 708.938C41.0859 709.188 40.9609 709.49 40.9609 709.844V712.062ZM48.6406 709.828C48.6406 709.292 48.7708 708.802 49.0312 708.359C49.2969 707.917 49.651 707.565 50.0938 707.305C50.5365 707.039 51.026 706.906 51.5625 706.906H53.3281C53.8646 706.906 54.3542 707.039 54.7969 707.305C55.2396 707.565 55.5911 707.917 55.8516 708.359C56.1172 708.802 56.25 709.292 56.25 709.828V712.078C56.25 712.615 56.1172 713.104 55.8516 713.547C55.5911 713.99 55.2396 714.344 54.7969 714.609C54.3542 714.87 53.8646 715 53.3281 715H51.5625C51.026 715 50.5365 714.87 50.0938 714.609C49.651 714.344 49.2969 713.99 49.0312 713.547C48.7708 713.104 48.6406 712.615 48.6406 712.078V709.828ZM50.2891 712.062C50.2891 712.417 50.4141 712.721 50.6641 712.977C50.9141 713.227 51.2135 713.352 51.5625 713.352H53.3281C53.6823 713.352 53.9818 713.227 54.2266 712.977C54.4766 712.721 54.6016 712.417 54.6016 712.062V709.844C54.6016 709.49 54.4766 709.188 54.2266 708.938C53.9818 708.682 53.6823 708.555 53.3281 708.555H51.5625C51.2135 708.555 50.9141 708.682 50.6641 708.938C50.4141 709.188 50.2891 709.49 50.2891 709.844V712.062ZM58.0469 703.891H59.6953V715H58.0469V703.891ZM61.5 709.18C61.5 708.758 61.6042 708.375 61.8125 708.031C62.026 707.688 62.3073 707.414 62.6562 707.211C63.0104 707.008 63.401 706.906 63.8281 706.906H68.5781V708.555H63.8281C63.6406 708.555 63.4792 708.617 63.3438 708.742C63.2135 708.862 63.1484 709.008 63.1484 709.18V709.375C63.1484 709.552 63.2135 709.703 63.3438 709.828C63.4792 709.953 63.6406 710.016 63.8281 710.016H66.7812C67.2083 710.016 67.5964 710.12 67.9453 710.328C68.2995 710.531 68.5807 710.805 68.7891 711.148C68.9974 711.492 69.1016 711.875 69.1016 712.297V712.719C69.1016 713.135 68.9974 713.518 68.7891 713.867C68.5807 714.211 68.2995 714.487 67.9453 714.695C67.5964 714.898 67.2083 715 66.7812 715H61.8672V713.352H66.7812C66.9688 713.352 67.1276 713.289 67.2578 713.164C67.3932 713.039 67.4609 712.888 67.4609 712.711V712.305C67.4609 712.122 67.3932 711.969 67.2578 711.844C67.1276 711.719 66.9688 711.656 66.7812 711.656H63.8281C63.401 711.656 63.0104 711.555 62.6562 711.352C62.3073 711.143 62.026 710.867 61.8125 710.523C61.6042 710.174 61.5 709.792 61.5 709.375V709.18Z" fill="currentColor" />
+</svg></button>
+    <button class="tool" data-action="clear"  title="Clear board"  aria-label="Clear"><svg viewBox="20 728 60 65" fill="none" aria-hidden="true"><image class="rn" href="assets/icons/clear.png" x="34.0" y="737.0" width="30" height="30"/><image class="rw" href="assets/icons/clear-w.png" x="34.0" y="737.0" width="30" height="30"/><line x1="46" y1="737.75" x2="52" y2="737.75" stroke-width="1.5" stroke="currentColor" />
+<path d="M32.2656 777.016C32.2656 776.438 32.4089 775.914 32.6953 775.445C32.9818 774.971 33.3646 774.594 33.8438 774.312C34.3229 774.031 34.8542 773.891 35.4375 773.891H41.2578V775.531H35.4375C35.0156 775.531 34.6562 775.677 34.3594 775.969C34.0625 776.255 33.9141 776.604 33.9141 777.016V781.906C33.9141 782.302 34.0625 782.643 34.3594 782.93C34.6562 783.211 35.0156 783.352 35.4375 783.352H41.2578V785H35.4375C34.8542 785 34.3229 784.862 33.8438 784.586C33.3646 784.31 32.9818 783.94 32.6953 783.477C32.4089 783.008 32.2656 782.492 32.2656 781.93V777.016ZM43.0625 773.891H44.7109V785H43.0625V773.891ZM46.5938 778.578C46.5938 778.115 46.763 777.721 47.1016 777.398C47.4401 777.07 47.8464 776.906 48.3203 776.906H51.6953C52.1276 776.906 52.5182 777.013 52.8672 777.227C53.2214 777.435 53.5026 777.719 53.7109 778.078C53.9245 778.432 54.0312 778.826 54.0312 779.258V779.484C54.0312 779.911 53.9245 780.302 53.7109 780.656C53.5026 781.005 53.2214 781.286 52.8672 781.5C52.5182 781.708 52.1276 781.812 51.6953 781.812H49.1797V780.172H51.7109C51.8984 780.172 52.0573 780.104 52.1875 779.969C52.3229 779.833 52.3906 779.669 52.3906 779.477V779.258C52.3906 779.06 52.3229 778.893 52.1875 778.758C52.0573 778.622 51.8984 778.555 51.7109 778.555H48.2422V782.711C48.2422 782.888 48.3021 783.039 48.4219 783.164C48.5417 783.289 48.6875 783.352 48.8594 783.352H53.4609V785H48.8594C48.4427 785 48.0625 784.898 47.7188 784.695C47.375 784.487 47.1016 784.211 46.8984 783.867C46.6953 783.518 46.5938 783.135 46.5938 782.719V778.578ZM55.6719 779.812C55.6719 779.276 55.8021 778.789 56.0625 778.352C56.3281 777.914 56.6823 777.565 57.125 777.305C57.5677 777.039 58.0573 776.906 58.5938 776.906H63.1094V785H61.4609V778.555H58.5938C58.2448 778.555 57.9453 778.68 57.6953 778.93C57.4453 779.174 57.3203 779.474 57.3203 779.828V782.062C57.3203 782.417 57.4453 782.721 57.6953 782.977C57.9453 783.227 58.2448 783.352 58.5938 783.352H60.5234V785H58.5938C58.0573 785 57.5677 784.87 57.125 784.609C56.6823 784.344 56.3281 783.99 56.0625 783.547C55.8021 783.104 55.6719 782.615 55.6719 782.078V779.812ZM64.9844 779.172C64.9844 778.755 65.0885 778.375 65.2969 778.031C65.5104 777.688 65.7917 777.414 66.1406 777.211C66.4948 777.008 66.8854 776.906 67.3125 776.906H69.1172V778.547H67.3125C67.125 778.547 66.9635 778.612 66.8281 778.742C66.6979 778.867 66.6328 779.021 66.6328 779.203V785H64.9844V779.172Z" fill="currentColor" />
+</svg></button>
+    <button class="tool" data-tool="text"     title="Text (T)"     aria-label="Text"><svg viewBox="20 798 60 65" fill="none" aria-hidden="true"><path d="M47.245 833.535V809.324H44.9636C43.8157 809.324 42.883 809.38 42.1656 809.493C41.4481 809.577 40.9029 809.761 40.5298 810.042C40.1854 810.324 39.9702 810.732 39.8841 811.268L39.3245 815.535H37V807H63V815.535H60.6325L60.0728 811.268C60.0155 810.732 59.8002 810.324 59.4272 810.042C59.0828 809.761 58.5375 809.577 57.7914 809.493C57.074 809.38 56.1413 809.324 54.9934 809.324H52.7119V833.535C52.7119 834.155 53.0132 834.563 53.6159 834.761C54.2472 834.958 55.0221 835.056 55.9404 835.056H56.5861V837H43.3709V835.056H44.0166C44.9349 835.056 45.6954 834.958 46.298 834.761C46.9294 834.563 47.245 834.155 47.245 833.535Z" fill="currentColor" />
+<path d="M33.4531 843.891H42.5V845.531H38.8047V855H37.1484V845.531H33.4531V843.891ZM42.9688 848.578C42.9688 848.115 43.138 847.721 43.4766 847.398C43.8151 847.07 44.2214 846.906 44.6953 846.906H48.0703C48.5026 846.906 48.8932 847.013 49.2422 847.227C49.5964 847.435 49.8776 847.719 50.0859 848.078C50.2995 848.432 50.4062 848.826 50.4062 849.258V849.484C50.4062 849.911 50.2995 850.302 50.0859 850.656C49.8776 851.005 49.5964 851.286 49.2422 851.5C48.8932 851.708 48.5026 851.812 48.0703 851.812H45.5547V850.172H48.0859C48.2734 850.172 48.4323 850.104 48.5625 849.969C48.6979 849.833 48.7656 849.669 48.7656 849.477V849.258C48.7656 849.06 48.6979 848.893 48.5625 848.758C48.4323 848.622 48.2734 848.555 48.0859 848.555H44.6172V852.711C44.6172 852.888 44.6771 853.039 44.7969 853.164C44.9167 853.289 45.0625 853.352 45.2344 853.352H49.8359V855H45.2344C44.8177 855 44.4375 854.898 44.0938 854.695C43.75 854.487 43.4766 854.211 43.2734 853.867C43.0703 853.518 42.9688 853.135 42.9688 852.719V848.578ZM54.7969 850.945L51.5 846.906H53.6016L55.875 849.711L58.1484 846.906H60.2422L56.9531 850.945L60.2422 855H58.1562L55.875 852.195L53.5938 855H51.5L54.7969 850.945ZM61.1094 846.906H62.1641V843.891H63.8125V846.906H66.3047V848.555H63.8125V852.703C63.8125 852.88 63.8802 853.034 64.0156 853.164C64.1562 853.289 64.3229 853.352 64.5156 853.352H66.3047V855H64.4922C64.0651 855 63.6745 854.898 63.3203 854.695C62.9714 854.487 62.6901 854.211 62.4766 853.867C62.2682 853.518 62.1641 853.133 62.1641 852.711V848.555H61.1094V846.906Z" fill="currentColor" />
+</svg></button>
+    <button class="tool" data-action="backdrop" title="Backdrop"   aria-label="Backdrop"><svg viewBox="20 868 60 65" fill="none" aria-hidden="true"><image class="rn" href="assets/icons/backdrop.png" x="35.0" y="877.0" width="30" height="30"/><image class="rw" href="assets/icons/backdrop-w.png" x="35.0" y="877.0" width="30" height="30"/><path d="M24.1016 914.668H28.4902C28.877 914.668 29.2266 914.76 29.5391 914.943C29.8516 915.127 30.0996 915.373 30.2832 915.682C30.4707 915.99 30.5645 916.336 30.5645 916.719V917.264C30.5645 917.807 30.4082 918.219 30.0957 918.5C30.373 918.68 30.5742 918.895 30.6992 919.145C30.8242 919.391 30.8867 919.699 30.8867 920.07V920.99C30.8867 921.357 30.793 921.693 30.6055 921.998C30.4219 922.303 30.1738 922.547 29.8613 922.73C29.5488 922.91 29.2031 923 28.8242 923H24.1016V914.668ZM28.8359 921.764C29.0625 921.764 29.2559 921.688 29.416 921.535C29.5762 921.379 29.6562 921.191 29.6562 920.973V920.053C29.6562 919.834 29.5762 919.646 29.416 919.49C29.2559 919.334 29.0605 919.256 28.8301 919.256H26.041V918.025H28.4902C28.7207 918.025 28.918 917.951 29.082 917.803C29.25 917.65 29.334 917.467 29.334 917.252V916.719C29.334 916.492 29.25 916.299 29.082 916.139C28.918 915.979 28.7207 915.898 28.4902 915.898H25.3379V921.764H28.8359ZM32.1758 919.109C32.1758 918.707 32.2734 918.342 32.4688 918.014C32.668 917.686 32.9336 917.424 33.2656 917.229C33.5977 917.029 33.9648 916.93 34.3672 916.93H37.7539V923H36.5176V918.166H34.3672C34.1055 918.166 33.8809 918.26 33.6934 918.447C33.5059 918.631 33.4121 918.855 33.4121 919.121V920.797C33.4121 921.062 33.5059 921.291 33.6934 921.482C33.8809 921.67 34.1055 921.764 34.3672 921.764H35.8145V923H34.3672C33.9648 923 33.5977 922.902 33.2656 922.707C32.9336 922.508 32.668 922.242 32.4688 921.91C32.2734 921.578 32.1758 921.211 32.1758 920.809V919.109ZM39.1016 919.121C39.1016 918.719 39.2031 918.352 39.4062 918.02C39.6094 917.688 39.8809 917.424 40.2207 917.229C40.5605 917.029 40.9375 916.93 41.3516 916.93H44.7676V918.166H41.3516C41.0742 918.166 40.8359 918.262 40.6367 918.453C40.4375 918.641 40.3379 918.869 40.3379 919.139V920.785C40.3379 921.055 40.4355 921.285 40.6309 921.477C40.8301 921.668 41.0703 921.764 41.3516 921.764H44.7676V923H41.3516C40.9375 923 40.5605 922.9 40.2207 922.701C39.8809 922.502 39.6094 922.236 39.4062 921.904C39.2031 921.568 39.1016 921.199 39.1016 920.797V919.121ZM46.1211 914.668H47.3574V919.256H47.7734L49.9707 916.93H51.5762L48.8047 919.871L51.8223 923H50.0938L47.6621 920.492H47.3574V923H46.1211V914.668ZM52.4141 919.121C52.4141 918.719 52.5117 918.352 52.707 918.02C52.9062 917.688 53.1719 917.424 53.5039 917.229C53.8359 917.029 54.2031 916.93 54.6055 916.93H56.0527V918.166H54.6055C54.3438 918.166 54.1191 918.262 53.9316 918.453C53.7441 918.641 53.6504 918.867 53.6504 919.133V920.809C53.6504 921.07 53.7441 921.295 53.9316 921.482C54.1191 921.67 54.3438 921.764 54.6055 921.764H56.7559V914.668H57.9922V921.764C57.9922 922.104 57.8711 922.395 57.6289 922.637C57.3867 922.879 57.0957 923 56.7559 923H54.6055C54.2031 923 53.8359 922.902 53.5039 922.707C53.1719 922.508 52.9062 922.244 52.707 921.916C52.5117 921.584 52.4141 921.219 52.4141 920.82V919.121ZM59.3984 918.629C59.3984 918.316 59.4766 918.031 59.6328 917.773C59.793 917.516 60.0039 917.311 60.2656 917.158C60.5312 917.006 60.8242 916.93 61.1445 916.93H62.498V918.16H61.1445C61.0039 918.16 60.8828 918.209 60.7812 918.307C60.6836 918.4 60.6348 918.516 60.6348 918.652V923H59.3984V918.629ZM63.4414 919.121C63.4414 918.719 63.5391 918.352 63.7344 918.02C63.9336 917.688 64.1992 917.424 64.5312 917.229C64.8633 917.029 65.2305 916.93 65.6328 916.93H66.957C67.3594 916.93 67.7266 917.029 68.0586 917.229C68.3906 917.424 68.6543 917.688 68.8496 918.02C69.0488 918.352 69.1484 918.719 69.1484 919.121V920.809C69.1484 921.211 69.0488 921.578 68.8496 921.91C68.6543 922.242 68.3906 922.508 68.0586 922.707C67.7266 922.902 67.3594 923 66.957 923H65.6328C65.2305 923 64.8633 922.902 64.5312 922.707C64.1992 922.508 63.9336 922.242 63.7344 921.91C63.5391 921.578 63.4414 921.211 63.4414 920.809V919.121ZM64.6777 920.797C64.6777 921.062 64.7715 921.291 64.959 921.482C65.1465 921.67 65.3711 921.764 65.6328 921.764H66.957C67.2227 921.764 67.4473 921.67 67.6309 921.482C67.8184 921.291 67.9121 921.062 67.9121 920.797V919.133C67.9121 918.867 67.8184 918.641 67.6309 918.453C67.4473 918.262 67.2227 918.166 66.957 918.166H65.6328C65.3711 918.166 65.1465 918.262 64.959 918.453C64.7715 918.641 64.6777 918.867 64.6777 919.133V920.797ZM70.4375 918.166C70.4375 917.826 70.5586 917.535 70.8008 917.293C71.043 917.051 71.334 916.93 71.6738 916.93H73.8242C74.2266 916.93 74.5938 917.029 74.9258 917.229C75.2578 917.424 75.5215 917.686 75.7168 918.014C75.916 918.342 76.0156 918.707 76.0156 919.109V920.809C76.0156 921.211 75.916 921.578 75.7168 921.91C75.5215 922.242 75.2578 922.508 74.9258 922.707C74.5938 922.902 74.2266 923 73.8242 923H72.377V921.764H73.8242C74.0898 921.764 74.3145 921.67 74.498 921.482C74.6855 921.291 74.7793 921.062 74.7793 920.797V919.121C74.7793 918.855 74.6855 918.631 74.498 918.447C74.3145 918.26 74.0898 918.166 73.8242 918.166H71.6738V925.262H70.4375V918.166Z" fill="currentColor" />
+</svg></button>
+  </nav>
+  <div id="ctrl">
+    <div class="cg" id="g1"><button class="bb" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="" viewBox="35 974 20 20" fill="none" aria-hidden="true"><path d="M47.625 994C49.6458 994 51.3802 993.3 52.8281 991.9C54.276 990.5 55 988.756 55 986.667C55 984.578 54.276 982.833 52.8281 981.433C51.3802 980.033 49.6458 979.333 47.625 979.333H39.75L43 975.867L41.25 974L35 980.667L41.25 987.333L43 985.467L39.75 982H47.625C48.9375 982 50.0781 982.444 51.0469 983.333C52.0156 984.222 52.5 985.333 52.5 986.667C52.5 988 52.0156 989.111 51.0469 990C50.0781 990.889 48.9375 991.333 47.625 991.333H38.75V994H47.625Z" fill="currentColor" />
+</svg></button><button class="bb" id="redoBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg class="" viewBox="85 974 20 20" fill="none" aria-hidden="true"><path d="M92.375 994C90.3542 994 88.6198 993.3 87.1719 991.9C85.724 990.5 85 988.756 85 986.667C85 984.578 85.724 982.833 87.1719 981.433C88.6198 980.033 90.3542 979.333 92.375 979.333H100.25L97 975.867L98.75 974L105 980.667L98.75 987.333L97 985.467L100.25 982H92.375C91.0625 982 89.9219 982.444 88.9531 983.333C87.9844 984.222 87.5 985.333 87.5 986.667C87.5 988 87.9844 989.111 88.9531 990C89.9219 990.889 91.0625 991.333 92.375 991.333H101.25V994H92.375Z" fill="currentColor" />
+</svg></button></div>
+    <div class="cg" id="g2"><button class="bb" id="prevBtn" title="Previous board" aria-label="Previous board"><svg class="" viewBox="167 975 8 18" fill="none" aria-hidden="true"><path d="M174.492 993C174.416 993 174.335 992.963 174.247 992.888C174.159 992.814 174.078 992.739 174.002 992.665L167.395 985.213C167.245 985.039 167.138 984.853 167.075 984.654C167.025 984.43 167 984.182 167 983.909C167 983.611 167.038 983.362 167.113 983.164C167.201 982.94 167.314 982.754 167.452 982.605L173.946 975.302C174.021 975.227 174.096 975.165 174.172 975.116C174.247 975.041 174.316 975.004 174.379 975.004C174.542 974.979 174.68 975.078 174.793 975.302C174.906 975.525 174.962 975.786 174.962 976.084C174.962 976.333 174.931 976.531 174.868 976.68C174.818 976.829 174.736 976.966 174.624 977.09L167.998 984.468L167.96 983.424L174.548 990.802C174.724 990.976 174.843 991.149 174.906 991.323C174.969 991.472 175 991.671 175 991.919C175 992.193 174.944 992.441 174.831 992.665C174.73 992.888 174.617 993 174.492 993Z" fill="currentColor" />
+</svg></button><span class="lbl"><svg class="board" viewBox="191 977 54 14" fill="none" aria-hidden="true"><path d="M191.701 977.113H199.016C199.66 977.113 200.243 977.266 200.764 977.572C201.285 977.878 201.698 978.288 202.004 978.803C202.316 979.317 202.473 979.893 202.473 980.531V981.439C202.473 982.344 202.212 983.031 201.691 983.5C202.154 983.799 202.489 984.158 202.697 984.574C202.906 984.984 203.01 985.499 203.01 986.117V987.65C203.01 988.262 202.854 988.822 202.541 989.33C202.235 989.838 201.822 990.245 201.301 990.551C200.78 990.85 200.204 991 199.572 991H191.701V977.113ZM199.592 988.939C199.969 988.939 200.292 988.812 200.559 988.559C200.826 988.298 200.959 987.986 200.959 987.621V986.088C200.959 985.723 200.826 985.411 200.559 985.15C200.292 984.89 199.966 984.76 199.582 984.76H194.934V982.709H199.016C199.4 982.709 199.729 982.585 200.002 982.338C200.282 982.084 200.422 981.778 200.422 981.42V980.531C200.422 980.154 200.282 979.831 200.002 979.564C199.729 979.298 199.4 979.164 199.016 979.164H193.762V988.939H199.592ZM205.158 984.535C205.158 983.865 205.321 983.253 205.646 982.699C205.979 982.146 206.421 981.706 206.975 981.381C207.528 981.049 208.14 980.883 208.811 980.883H211.018C211.688 980.883 212.3 981.049 212.854 981.381C213.407 981.706 213.846 982.146 214.172 982.699C214.504 983.253 214.67 983.865 214.67 984.535V987.348C214.67 988.018 214.504 988.63 214.172 989.184C213.846 989.737 213.407 990.18 212.854 990.512C212.3 990.837 211.688 991 211.018 991H208.811C208.14 991 207.528 990.837 206.975 990.512C206.421 990.18 205.979 989.737 205.646 989.184C205.321 988.63 205.158 988.018 205.158 987.348V984.535ZM207.219 987.328C207.219 987.771 207.375 988.152 207.688 988.471C208 988.783 208.374 988.939 208.811 988.939H211.018C211.46 988.939 211.835 988.783 212.141 988.471C212.453 988.152 212.609 987.771 212.609 987.328V984.555C212.609 984.112 212.453 983.734 212.141 983.422C211.835 983.103 211.46 982.943 211.018 982.943H208.811C208.374 982.943 208 983.103 207.688 983.422C207.375 983.734 207.219 984.112 207.219 984.555V987.328ZM216.818 984.516C216.818 983.845 216.981 983.236 217.307 982.689C217.639 982.143 218.081 981.706 218.635 981.381C219.188 981.049 219.8 980.883 220.471 980.883H226.115V991H224.055V982.943H220.471C220.035 982.943 219.66 983.1 219.348 983.412C219.035 983.718 218.879 984.092 218.879 984.535V987.328C218.879 987.771 219.035 988.152 219.348 988.471C219.66 988.783 220.035 988.939 220.471 988.939H222.883V991H220.471C219.8 991 219.188 990.837 218.635 990.512C218.081 990.18 217.639 989.737 217.307 989.184C216.981 988.63 216.818 988.018 216.818 987.348V984.516ZM228.459 983.715C228.459 983.194 228.589 982.719 228.85 982.289C229.117 981.859 229.468 981.518 229.904 981.264C230.347 981.01 230.835 980.883 231.369 980.883H233.625V982.934H231.369C231.135 982.934 230.933 983.015 230.764 983.178C230.601 983.334 230.52 983.526 230.52 983.754V991H228.459V983.715ZM235.197 984.535C235.197 983.865 235.36 983.253 235.686 982.699C236.018 982.146 236.46 981.706 237.014 981.381C237.567 981.049 238.179 980.883 238.85 980.883H241.262V982.943H238.85C238.413 982.943 238.039 983.103 237.727 983.422C237.414 983.734 237.258 984.112 237.258 984.555V987.348C237.258 987.784 237.414 988.158 237.727 988.471C238.039 988.783 238.413 988.939 238.85 988.939H242.434V977.113H244.494V988.939C244.494 989.506 244.292 989.991 243.889 990.395C243.485 990.798 243 991 242.434 991H238.85C238.179 991 237.567 990.837 237.014 990.512C236.46 990.18 236.018 989.74 235.686 989.193C235.36 988.64 235.197 988.031 235.197 987.367V984.535Z" fill="currentColor" />
+</svg></span><input id="pageNum" class="bb" type="text" inputmode="numeric" value="1" aria-label="Board number"><span class="lbl txt" id="pageOf">of 1</span><button class="bb" id="nextBtn" title="Next board" aria-label="Next board"><svg class="" viewBox="345 975 8 18" fill="none" aria-hidden="true"><path d="M345.508 993C345.584 993 345.665 992.963 345.753 992.888C345.841 992.814 345.922 992.739 345.998 992.665L352.605 985.213C352.755 985.039 352.862 984.853 352.925 984.654C352.975 984.43 353 984.182 353 983.909C353 983.611 352.962 983.362 352.887 983.164C352.799 982.94 352.686 982.754 352.548 982.605L346.054 975.302C345.979 975.227 345.904 975.165 345.828 975.116C345.753 975.041 345.684 975.004 345.621 975.004C345.458 974.979 345.32 975.078 345.207 975.302C345.094 975.525 345.038 975.786 345.038 976.084C345.038 976.333 345.069 976.531 345.132 976.68C345.182 976.829 345.264 976.966 345.376 977.09L352.002 984.468L352.04 983.424L345.452 990.802C345.276 990.976 345.157 991.149 345.094 991.323C345.031 991.472 345 991.671 345 991.919C345 992.193 345.056 992.441 345.169 992.665C345.27 992.888 345.383 993 345.508 993Z" fill="currentColor" />
+</svg></button><button class="bb flat" id="addBtn" title="Add board" aria-label="Add board"><svg class="" viewBox="378 975 18 18" fill="none" aria-hidden="true"><path d="M379.439 985.446C379.02 985.446 378.676 985.313 378.406 985.048C378.135 984.783 378 984.458 378 984.072C378 983.687 378.135 983.373 378.406 983.133C378.676 982.867 379.02 982.735 379.439 982.735H394.561C394.98 982.735 395.324 982.867 395.594 983.133C395.865 983.398 396 983.723 396 984.108C396 984.494 395.865 984.819 395.594 985.084C395.324 985.325 394.98 985.446 394.561 985.446H379.439ZM386.963 993C386.52 993 386.139 992.855 385.82 992.566C385.525 992.277 385.377 991.916 385.377 991.482V976.554C385.377 976.096 385.525 975.723 385.82 975.434C386.139 975.145 386.533 975 387 975C387.467 975 387.836 975.145 388.107 975.434C388.402 975.723 388.549 976.096 388.549 976.554V991.446C388.549 991.904 388.402 992.277 388.107 992.566C387.811 992.855 387.43 993 386.963 993Z" fill="currentColor" />
+</svg></button><button class="bb flat" id="delBtn" title="Delete this board" aria-label="Delete board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></div>
+    <div class="cg" id="g3"><button class="bb flat" id="zoomOutBtn" title="Zoom out" aria-label="Zoom out"><svg class="" viewBox="445 973 22 22" fill="none" aria-hidden="true"><path d="M466 994L461.167 989.167M451.556 982.889H458.222M463.778 982.889C463.778 987.798 459.798 991.778 454.889 991.778C449.98 991.778 446 987.798 446 982.889C446 977.98 449.98 974 454.889 974C459.798 974 463.778 977.98 463.778 982.889Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+</svg></button><input id="zoomRange" type="range" min="0" max="1000" value="380" aria-label="Zoom" title="Zoom (click the icons or Ctrl + scroll)"><button class="bb flat" id="zoomInBtn" title="Zoom in" aria-label="Zoom in"><svg class="" viewBox="623 973 22 22" fill="none" aria-hidden="true"><path d="M644 994L639.167 989.167M632.889 979.556V986.222M629.556 982.889H636.222M641.778 982.889C641.778 987.798 637.798 991.778 632.889 991.778C627.98 991.778 624 987.798 624 982.889C624 977.98 627.98 974 632.889 974C637.798 974 641.778 977.98 641.778 982.889Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+</svg></button><button id="zoomPct" title="Reset zoom to 100%" aria-label="Reset zoom">100%</button></div>
+  </div>
+</footer>
+
+<!-- Right sidebar: switch between whiteboard and graph -->
+<div id="scrim" hidden></div>
+<aside id="sidebar" aria-label="Switch view">
+  <h2>Switch view</h2>
+  <a class="nav current" href="index.html">Whiteboard</a>
+  <a class="nav disabled" href="#" aria-disabled="true">Graph Calculator <small>coming soon</small></a>
+  <h2>Board</h2>
+  <button class="nav" id="exportPng">Export as PNG</button>
+  <button class="nav" id="saveJson">Save board file</button>
+  <button class="nav" id="openJson">Open board file</button>
+  <input type="file" id="fileJson" accept=".json,application/json" hidden>
+  <input type="file" id="fileImg" accept="image/*" hidden>
+</aside>
+
+<div id="modal" hidden><div class="box" role="dialog" aria-modal="true"><p id="modalMsg"></p><div class="row" id="modalBtns"></div></div></div>
+<div id="toast" hidden></div>
+
+<script>
+/* Geometry construction tools (GeoGebra-style).
+ * Every construction is a dependent object: it stores references to its parents and is
+ * re-computed each frame, so dragging a free point updates everything built on it. */
+window.WBGeo = function (env) {
+'use strict';
+const { objs, uid, CM } = env;
+const GEO = '#0b3d91', TAU = Math.PI * 2, FAR = 1e5;
+let cache = new Map(), idx = null;
+const reset = () => { cache = new Map(); idx = null; };
+const O = id => { if (!idx) idx = new Map(objs().map(o => [o.id, o])); return idx.get(id); };
+const ev = o => {
+  if (!o) return null; if (cache.has(o.id)) return cache.get(o.id);
+  cache.set(o.id, null); let r = null; try { r = compute(o); } catch (e) { r = null; } cache.set(o.id, r); return r;
+};
+const P = id => ev(O(id));
+const pp = id => { const r = P(id); return r && r.t === 'p' ? r : null; };
+const nrm = a => ((a % TAU) + TAU) % TAU;
+const mang = (a, b) => Math.atan2(-(b.y - a.y), b.x - a.x);          // maths angle (y up)
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const pt = (x, y) => ({ t: 'p', x, y });
+const rot = (x, y, f) => [x * Math.cos(f) + y * Math.sin(f), -x * Math.sin(f) + y * Math.cos(f)];
+const unit = (x, y) => { const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
+const cm = v => (v / CM).toFixed(2);
+const lineP = (a, b, mode = 'line') => (a.x === b.x && a.y === b.y) ? null : { t: 'l', mode, ax: a.x, ay: a.y, bx: b.x, by: b.y };
+
+/* ───── intersections ───── */
+function segsOf(r) {
+  if (r.t === 'l') return [[r.ax, r.ay, r.bx, r.by, r.mode === 'vec' ? 'seg' : r.mode]];
+  if (r.t === 'poly' || r.t === 'pl') {
+    const q = r.pts, s = []; for (let i = 0; i < q.length - 1; i++) s.push([q[i].x, q[i].y, q[i + 1].x, q[i + 1].y, 'seg']);
+    if (r.t === 'poly' && q.length > 2) s.push([q[q.length - 1].x, q[q.length - 1].y, q[0].x, q[0].y, 'seg']); return s;
+  }
+  return null;
+}
+const okT = (m, v) => m === 'line' || (m === 'ray' ? v >= -1e-9 : (v >= -1e-9 && v <= 1 + 1e-9));
+function ll(s1, s2) {
+  const [x1, y1, x2, y2, m1] = s1, [x3, y3, x4, y4, m2] = s2, d = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3);
+  if (Math.abs(d) < 1e-9) return null;
+  const t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / d, u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / d;
+  return okT(m1, t) && okT(m2, u) ? pt(x1 + t * (x2 - x1), y1 + t * (y2 - y1)) : null;
+}
+const inArc = (c, p) => c.a0 == null || nrm(mang(c, p) - c.a0) <= c.a1 - c.a0 + 1e-9;
+function lc(s, c) {
+  const [ax, ay, bx, by, m] = s, dx = bx - ax, dy = by - ay, fx = ax - c.x, fy = ay - c.y;
+  const A = dx * dx + dy * dy, B = 2 * (fx * dx + fy * dy), C = fx * fx + fy * fy - c.r * c.r, D = B * B - 4 * A * C;
+  if (D < 0) return []; const q = Math.sqrt(D), ts = D < 1e-9 ? [-B / (2 * A)] : [(-B - q) / (2 * A), (-B + q) / (2 * A)];
+  return ts.filter(t => okT(m, t)).map(t => pt(ax + t * dx, ay + t * dy)).filter(p => inArc(c, p));
+}
+function cc(c1, c2) {
+  const d = dist(c1, c2); if (d < 1e-9 || d > c1.r + c2.r || d < Math.abs(c1.r - c2.r)) return [];
+  const a = (c1.r * c1.r - c2.r * c2.r + d * d) / (2 * d), h = Math.sqrt(Math.max(0, c1.r * c1.r - a * a));
+  const ux = (c2.x - c1.x) / d, uy = (c2.y - c1.y) / d, mx = c1.x + a * ux, my = c1.y + a * uy;
+  return [pt(mx + h * uy, my - h * ux), pt(mx - h * uy, my + h * ux)].filter(p => inArc(c1, p) && inArc(c2, p));
+}
+function intersect(A, B) {
+  const sa = segsOf(A), sb = segsOf(B), out = [];
+  if (sa && sb) { for (const x of sa) for (const y of sb) { const p = ll(x, y); if (p) out.push(p); } return out; }
+  if (sa && B.t === 'c') return sa.flatMap(s => lc(s, B));
+  if (sb && A.t === 'c') return sb.flatMap(s => lc(s, A));
+  if (A.t === 'c' && B.t === 'c') return cc(A, B);
+  return out;
+}
+
+/* ───── evaluation ───── */
+function xform(o) {
+  const a = pp(o.refs[0]); if (!a) return null;
+  const aux = o.refs[1] && P(o.refs[1]), n = o.num;
+  switch (o.xf) {
+    case 'reflLine': { if (!aux || aux.t !== 'l') return null; const dx = aux.bx - aux.ax, dy = aux.by - aux.ay, l2 = dx * dx + dy * dy, t = ((a.x - aux.ax) * dx + (a.y - aux.ay) * dy) / l2, fx = aux.ax + t * dx, fy = aux.ay + t * dy; return pt(2 * fx - a.x, 2 * fy - a.y); }
+    case 'reflPt': if (!aux || aux.t !== 'p') return null; return pt(2 * aux.x - a.x, 2 * aux.y - a.y);
+    case 'inv': { if (!aux || aux.t !== 'c') return null; const dx = a.x - aux.x, dy = a.y - aux.y, d2 = dx * dx + dy * dy; if (d2 < 1e-9) return null; const k = aux.r * aux.r / d2; return pt(aux.x + dx * k, aux.y + dy * k); }
+    case 'rot': { if (!aux || aux.t !== 'p') return null; const [x, y] = rot(a.x - aux.x, a.y - aux.y, n * Math.PI / 180); return pt(aux.x + x, aux.y + y); }
+    case 'trans': if (!aux || aux.t !== 'l') return null; return pt(a.x + aux.bx - aux.ax, a.y + aux.by - aux.ay);
+    case 'dil': if (!aux || aux.t !== 'p') return null; return pt(aux.x + (a.x - aux.x) * n, aux.y + (a.y - aux.y) * n);
+  }
+  return null;
+}
+function circum(a, b, c) {
+  const d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)); if (Math.abs(d) < 1e-9) return null;
+  const a2 = a.x * a.x + a.y * a.y, b2 = b.x * b.x + b.y * b.y, c2 = c.x * c.x + c.y * c.y;
+  const x = (a2 * (b.y - c.y) + b2 * (c.y - a.y) + c2 * (a.y - b.y)) / d, y = (a2 * (c.x - b.x) + b2 * (a.x - c.x) + c2 * (b.x - a.x)) / d;
+  return { x, y, r: Math.hypot(a.x - x, a.y - y) };
+}
+function perimeter(r) { const q = r.pts; let s = 0; for (let i = 0; i < q.length - 1; i++) s += dist(q[i], q[i + 1]); if (r.t === 'poly') s += dist(q[q.length - 1], q[0]); return s; }
+function area(r) { let s = 0; const q = r.pts; for (let i = 0; i < q.length; i++) { const a = q[i], b = q[(i + 1) % q.length]; s += a.x * b.y - b.x * a.y; } return Math.abs(s) / 2; }
+const ptsOf = o => o.refs.map(pp);
+function compute(o) {
+  const R = o.refs || [];
+  switch (o.kind) {
+    case 'pt': return pt(o.x, o.y);
+    case 'ptOn': {
+      const r = P(R[0]); if (!r) return null;
+      if (r.t === 'l') { let t = o.t; if (r.mode === 'seg' || r.mode === 'vec') t = Math.min(1, Math.max(0, t)); else if (r.mode === 'ray') t = Math.max(0, t); return pt(r.ax + t * (r.bx - r.ax), r.ay + t * (r.by - r.ay)); }
+      if (r.t === 'c') return pt(r.x + r.r * Math.cos(o.th), r.y - r.r * Math.sin(o.th));
+      return null;
+    }
+    case 'mid': {
+      if (R.length === 2) { const a = pp(R[0]), b = pp(R[1]); return a && b ? pt((a.x + b.x) / 2, (a.y + b.y) / 2) : null; }
+      const r = P(R[0]); if (!r) return null; if (r.t === 'l') return pt((r.ax + r.bx) / 2, (r.ay + r.by) / 2); if (r.t === 'c') return pt(r.x, r.y); return null;
+    }
+    case 'inter': { const A = P(R[0]), B = P(R[1]); if (!A || !B) return null; const p = intersect(A, B)[o.i]; return p || null; }
+    case 'polar': { const a = pp(R[0]); return a ? pt(a.x + o.r * Math.cos(o.th), a.y - o.r * Math.sin(o.th)) : null; }
+    case 'ptX': return xform(o);
+    case 'regv': {
+      const a = pp(R[0]), b = pp(R[1]); if (!a || !b) return null; const th = TAU / o.n; let x = a.x, y = a.y;
+      for (let j = 0; j < o.k; j++) { const [dx, dy] = rot(b.x - a.x, b.y - a.y, j * th); x += dx; y += dy; } return pt(x, y);
+    }
+    case 'line': case 'seg': case 'ray': case 'vec': { const a = pp(R[0]), b = pp(R[1]); return a && b ? lineP(a, b, o.kind) : null; }
+    case 'perp': case 'par': { const p = pp(R[0]), L = P(R[1]); if (!p || !L || L.t !== 'l') return null; const dx = L.bx - L.ax, dy = L.by - L.ay; return lineP(p, pt(p.x + (o.kind === 'perp' ? -dy : dx), p.y + (o.kind === 'perp' ? dx : dy))); }
+    case 'perpBis': {
+      let a, b; if (R.length === 1) { const s = P(R[0]); if (!s || s.t !== 'l') return null; a = pt(s.ax, s.ay); b = pt(s.bx, s.by); } else { a = pp(R[0]); b = pp(R[1]); }
+      if (!a || !b) return null; const m = pt((a.x + b.x) / 2, (a.y + b.y) / 2); return lineP(m, pt(m.x - (b.y - a.y), m.y + (b.x - a.x)));
+    }
+    case 'angBis': {
+      const [a, b, c] = ptsOf(o); if (!a || !b || !c) return null; const u = unit(a.x - b.x, a.y - b.y), v = unit(c.x - b.x, c.y - b.y);
+      let wx = u[0] + v[0], wy = u[1] + v[1]; if (Math.hypot(wx, wy) < 1e-6) { wx = -u[1]; wy = u[0]; } return lineP(b, pt(b.x + wx, b.y + wy));
+    }
+    case 'tan': {
+      const p = pp(R[0]), c = P(R[1]); if (!p || !c || c.t !== 'c') return null; const d = dist(p, c);
+      if (Math.abs(d - c.r) < 1e-6) { if (o.i) return null; return lineP(p, pt(p.x - (p.y - c.y), p.y + (p.x - c.x))); }
+      if (d < c.r) return null; const al = Math.asin(c.r / d) * (o.i ? -1 : 1), u = unit(c.x - p.x, c.y - p.y);
+      return lineP(p, pt(p.x + u[0] * Math.cos(al) - u[1] * Math.sin(al), p.y + u[0] * Math.sin(al) + u[1] * Math.cos(al)));
+    }
+    case 'poly': case 'polyline': { const q = ptsOf(o); if (q.some(x => !x)) return null; return { t: o.kind === 'poly' ? 'poly' : 'pl', pts: q }; }
+    case 'circ2': { const c = pp(R[0]), q = pp(R[1]); return c && q ? { t: 'c', x: c.x, y: c.y, r: dist(c, q) } : null; }
+    case 'circR': { const c = pp(R[0]); return c ? { t: 'c', x: c.x, y: c.y, r: o.r } : null; }
+    case 'circR2': {
+      const f = P(R[0]); if (!f) return null;
+      if (f.t === 'l') { const c = pp(R[1]); return c ? { t: 'c', x: c.x, y: c.y, r: Math.hypot(f.bx - f.ax, f.by - f.ay) } : null; }
+      const b = pp(R[1]), c = pp(R[2]); return f.t === 'p' && b && c ? { t: 'c', x: c.x, y: c.y, r: dist(f, b) } : null;
+    }
+    case 'circ3': { const [a, b, c] = ptsOf(o); if (!a || !b || !c) return null; const k = circum(a, b, c); return k && { t: 'c', ...k }; }
+    case 'semi': { const a = pp(R[0]), b = pp(R[1]); if (!a || !b) return null; const m = pt((a.x + b.x) / 2, (a.y + b.y) / 2), a0 = mang(m, a); return { t: 'c', x: m.x, y: m.y, r: dist(a, b) / 2, a0, a1: a0 + Math.PI }; }
+    case 'arc': case 'sector': {
+      const [c, s, e] = ptsOf(o); if (!c || !s || !e) return null; const a0 = mang(c, s), sw = nrm(mang(c, e) - a0);
+      return { t: 'c', x: c.x, y: c.y, r: dist(c, s), a0, a1: a0 + (sw < 1e-9 ? 1e-6 : sw), sector: o.kind === 'sector' };
+    }
+    case 'arc3': case 'sector3': {
+      const [a, b, c] = ptsOf(o); if (!a || !b || !c) return null; const k = circum(a, b, c); if (!k) return null;
+      const aA = mang(k, a), aB = mang(k, b), aC = mang(k, c), dB = nrm(aB - aA), dC = nrm(aC - aA);
+      const a0 = dB < dC ? aA : aC, a1 = dB < dC ? aA + dC : aC + nrm(aA - aC);
+      return { t: 'c', ...k, a0, a1, sector: o.kind === 'sector3' };
+    }
+    case 'ellipse': case 'hyper': {
+      const [f1, f2, q] = ptsOf(o); if (!f1 || !f2 || !q) return null; const d1 = dist(q, f1), d2 = dist(q, f2), c = dist(f1, f2) / 2, rt = Math.atan2(f2.y - f1.y, f2.x - f1.x);
+      const m = pt((f1.x + f2.x) / 2, (f1.y + f2.y) / 2);
+      if (o.kind === 'ellipse') { const a = (d1 + d2) / 2; return a > c + 1e-6 ? { t: 'cn', k: 'e', x: m.x, y: m.y, a, b: Math.sqrt(a * a - c * c), rt } : null; }
+      const a = Math.abs(d1 - d2) / 2; return a > 1e-6 && a < c - 1e-6 ? { t: 'cn', k: 'h', x: m.x, y: m.y, a, b: Math.sqrt(c * c - a * a), rt } : null;
+    }
+    case 'parab': {
+      const f = pp(R[0]), L = P(R[1]); if (!f || !L || L.t !== 'l') return null; const [ux, uy] = unit(L.bx - L.ax, L.by - L.ay);
+      let nx = -uy, ny = ux; const s = (f.x - L.ax) * nx + (f.y - L.ay) * ny; if (Math.abs(s) < 1e-6) return null; if (s < 0) { nx = -nx; ny = -ny; }
+      const p = Math.abs(s); return { t: 'cn', k: 'p', x: f.x - nx * p / 2, y: f.y - ny * p / 2, ux, uy, nx, ny, p };
+    }
+    case 'angle': {
+      const [a, b, c] = ptsOf(o); if (!a || !b || !c) return null; const a0 = mang(b, a), sw = nrm(mang(b, c) - a0);
+      return { t: 'ang', x: b.x, y: b.y, a0, a1: a0 + sw, deg: sw * 180 / Math.PI };
+    }
+    case 'angle2': {
+      const A = P(R[0]), B = P(R[1]); if (!A || !B || A.t !== 'l' || B.t !== 'l') return null; const v = ll([A.ax, A.ay, A.bx, A.by, 'line'], [B.ax, B.ay, B.bx, B.by, 'line']); if (!v) return null;
+      const a0 = Math.atan2(-(A.by - A.ay), A.bx - A.ax), sw = nrm(Math.atan2(-(B.by - B.ay), B.bx - B.ax) - a0); return { t: 'ang', x: v.x, y: v.y, a0, a1: a0 + sw, deg: sw * 180 / Math.PI };
+    }
+    case 'meas': {
+      const r = R.map(P); if (r.some(x => !x)) return null; let v, x, y, txt;
+      if (o.mt === 'dist') {
+        const [A, B] = r;
+        if (A.t === 'p' && B && B.t === 'p') { v = dist(A, B); x = (A.x + B.x) / 2; y = (A.y + B.y) / 2 - 12; }
+        else if (A.t === 'l') { v = Math.hypot(A.bx - A.ax, A.by - A.ay); x = (A.ax + A.bx) / 2; y = (A.ay + A.by) / 2 - 12; }
+        else if (A.t === 'c') { v = TAU * A.r * (A.a0 == null ? 1 : (A.a1 - A.a0) / TAU); x = A.x; y = A.y - A.r - 12; }
+        else if (A.t === 'poly' || A.t === 'pl') { v = perimeter(A); x = A.pts[0].x; y = A.pts[0].y - 14; } else return null;
+        txt = `${o.name} = ${cm(v)} cm`;
+      } else if (o.mt === 'area') {
+        const A = r[0]; if (A.t === 'poly') { v = area(A); x = A.pts.reduce((s, q) => s + q.x, 0) / A.pts.length; y = A.pts.reduce((s, q) => s + q.y, 0) / A.pts.length; }
+        else if (A.t === 'c') { v = Math.PI * A.r * A.r; x = A.x; y = A.y; } else return null;
+        txt = `${o.name} = ${(v / CM / CM).toFixed(2)} cm²`;
+      } else {
+        const A = r[0]; if (A.t !== 'l') return null; const dx = A.bx - A.ax; x = (A.ax + A.bx) / 2; y = (A.ay + A.by) / 2 - 12;
+        txt = Math.abs(dx) < 1e-9 ? `${o.name} = undefined` : `${o.name} = ${(-(A.by - A.ay) / dx).toFixed(2)}`;
+      }
+      return { t: 'txt', x, y, text: txt };
+    }
+  }
+  return null;
+}
+
+/* ───── geometry of drawn curves ───── */
+function conicLines(r) {
+  const out = [], push = (ax, ay, f) => { const [x, y] = rot(ax, ay, -f); return [r.x + x, r.y + y]; };
+  void push;
+  const R2 = (lx, ly) => { const c = Math.cos(r.rt), s = Math.sin(r.rt); return [r.x + lx * c - ly * s, r.y + lx * s + ly * c]; };
+  if (r.k === 'e') { const l = []; for (let i = 0; i <= 120; i++) { const t = i / 120 * TAU; l.push(R2(r.a * Math.cos(t), r.b * Math.sin(t))); } out.push(l); }
+  else if (r.k === 'h') for (const sg of [1, -1]) { const l = []; for (let i = -60; i <= 60; i++) { const t = i / 60 * 4; l.push(R2(sg * r.a * Math.cosh(t), r.b * Math.sinh(t))); } out.push(l); }
+  else { const l = []; for (let i = -150; i <= 150; i++) { const t = i / 150 * 2500; l.push([r.x + t * r.ux + (t * t / (2 * r.p)) * r.nx, r.y + t * r.uy + (t * t / (2 * r.p)) * r.ny]); } out.push(l); }
+  return out;
+}
+const extent = r => {                             // visible endpoints of a line-like prim
+  const [ux, uy] = unit(r.bx - r.ax, r.by - r.ay);
+  if (r.mode === 'line') return [r.ax - ux * FAR, r.ay - uy * FAR, r.ax + ux * FAR, r.ay + uy * FAR];
+  if (r.mode === 'ray') return [r.ax, r.ay, r.ax + ux * FAR, r.ay + uy * FAR];
+  return [r.ax, r.ay, r.bx, r.by];
+};
+function inPolyG(p, q) { let c = false; for (let i = 0, j = q.length - 1; i < q.length; j = i++) { if ((q[i].y > p.y) !== (q[j].y > p.y) && p.x < (q[j].x - q[i].x) * (p.y - q[i].y) / (q[j].y - q[i].y) + q[i].x) c = !c; } return c; }
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0; t = Math.min(1, Math.max(0, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+function hit(o, p, tol) {
+  const r = ev(o); if (!r) return false; const z = env.z();
+  switch (r.t) {
+    case 'p': return Math.hypot(p.x - r.x, p.y - r.y) <= tol + 4 / z;
+    case 'l': { const e = extent(r); return segDist(p.x, p.y, e[0], e[1], e[2], e[3]) <= tol; }
+    case 'c': { const d = dist(p, r); if (r.sector && d < r.r && inArc(r, p)) return true; return Math.abs(d - r.r) <= tol && inArc(r, p); }
+    case 'poly': case 'pl': if (r.t === 'poly' && inPolyG(p, r.pts)) return true; return (segsOf(r) || []).some(s => segDist(p.x, p.y, s[0], s[1], s[2], s[3]) <= tol);
+    case 'cn': return conicLines(r).some(l => { for (let i = 0; i < l.length - 1; i++) if (segDist(p.x, p.y, l[i][0], l[i][1], l[i + 1][0], l[i + 1][1]) <= tol) return true; return false; });
+    case 'txt': return Math.abs(p.x - r.x) < 50 / z && Math.abs(p.y - r.y) < 10 / z;
+  }
+  return false;
+}
+function gbox(o) {
+  const r = ev(o); if (!r) return { x: 0, y: 0, w: 0, h: 0 };
+  const bb = pts => { const xs = pts.map(q => q.x ?? q[0]), ys = pts.map(q => q.y ?? q[1]); const x = Math.min(...xs), y = Math.min(...ys); return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }; };
+  switch (r.t) {
+    case 'p': case 'ang': return { x: r.x, y: r.y, w: 0, h: 0 };
+    case 'txt': return { x: r.x - 40, y: r.y - 8, w: 80, h: 16 };
+    case 'l': return bb([[r.ax, r.ay], [r.bx, r.by]]);
+    case 'c': return { x: r.x - r.r, y: r.y - r.r, w: 2 * r.r, h: 2 * r.r };
+    case 'poly': case 'pl': return bb(r.pts);
+    case 'cn': return bb(conicLines(r)[0].filter((_, i, a) => i % 6 === 0).slice(0, 40));
+  }
+  return { x: 0, y: 0, w: 0, h: 0 };
+}
+
+/* ───── drawing ───── */
+function draw(c, o, z, f) {
+  const r = ev(o); if (!r) return; if (o.hidden && !f.ghost) return;
+  const col = o.color || GEO, lw = 2 / z; c.save();
+  if (o.hidden) c.globalAlpha = .28;
+  c.strokeStyle = col; c.fillStyle = col; c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
+  const halo = () => { if (f.sel) { c.save(); c.strokeStyle = 'rgba(30,136,229,.4)'; c.lineWidth = 9 / z; c.stroke(); c.restore(); } };
+  const label = (x, y) => { if (o.lbl) { c.font = `${15 / z}px Quicksand,sans-serif`; c.fillStyle = col; c.textBaseline = 'alphabetic'; c.textAlign = 'left'; c.fillText(o.name, x, y); } };
+  switch (r.t) {
+    case 'p': {
+      if (f.sel) { c.beginPath(); c.arc(r.x, r.y, 10 / z, 0, TAU); c.fillStyle = 'rgba(30,136,229,.35)'; c.fill(); }
+      c.beginPath(); c.arc(r.x, r.y, 5 / z, 0, TAU); c.fillStyle = col; c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1.5 / z; c.stroke();
+      label(r.x + 8 / z, r.y - 8 / z); break;
+    }
+    case 'l': {
+      const e = extent(r); c.beginPath(); c.moveTo(e[0], e[1]); c.lineTo(e[2], e[3]); halo(); c.stroke();
+      if (r.mode === 'vec') { const a = Math.atan2(r.by - r.ay, r.bx - r.ax), L = 14 / z; c.beginPath(); c.moveTo(r.bx, r.by); c.lineTo(r.bx - L * Math.cos(a - .4), r.by - L * Math.sin(a - .4)); c.lineTo(r.bx - L * Math.cos(a + .4), r.by - L * Math.sin(a + .4)); c.closePath(); c.fill(); }
+      label((r.ax + r.bx) / 2 + 6 / z, (r.ay + r.by) / 2 - 6 / z); break;
+    }
+    case 'c': {
+      c.beginPath();
+      if (r.a0 == null) c.arc(r.x, r.y, r.r, 0, TAU);
+      else { if (r.sector) { c.moveTo(r.x, r.y); c.lineTo(r.x + r.r * Math.cos(r.a0), r.y - r.r * Math.sin(r.a0)); } c.arc(r.x, r.y, r.r, -r.a0, -r.a1, true); if (r.sector) c.closePath(); }
+      if (r.sector) { c.save(); c.fillStyle = 'rgba(11,61,145,.1)'; c.fill(); c.restore(); }
+      halo(); c.stroke(); label(r.x, r.y - r.r - 6 / z); break;
+    }
+    case 'poly': case 'pl': {
+      c.beginPath(); r.pts.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); if (r.t === 'poly') { c.closePath(); c.save(); c.fillStyle = 'rgba(11,61,145,.1)'; c.fill(); c.restore(); }
+      halo(); c.stroke(); break;
+    }
+    case 'cn': { for (const l of conicLines(r)) { c.beginPath(); l.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); halo(); c.stroke(); } break; }
+    case 'ang': {
+      const rad = 28 / z; c.beginPath(); c.moveTo(r.x, r.y); c.arc(r.x, r.y, rad, -r.a0, -r.a1, true); c.closePath(); c.save(); c.fillStyle = 'rgba(220,60,60,.18)'; c.fill(); c.restore();
+      c.lineWidth = 1.5 / z; c.stroke(); const m = (r.a0 + r.a1) / 2;
+      c.font = `${14 / z}px Quicksand,sans-serif`; c.fillStyle = col; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(r.deg.toFixed(1) + '°', r.x + 46 / z * Math.cos(m), r.y - 46 / z * Math.sin(m)); break;
+    }
+    case 'txt': {
+      c.font = `${15 / z}px Quicksand,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; const w = c.measureText(r.text).width + 10 / z;
+      c.fillStyle = 'rgba(255,255,255,.85)'; c.fillRect(r.x - w / 2, r.y - 10 / z, w, 20 / z);
+      if (f.sel) { c.strokeStyle = '#1e88e5'; c.lineWidth = 1 / z; c.strokeRect(r.x - w / 2, r.y - 10 / z, w, 20 / z); }
+      c.fillStyle = col; c.fillText(r.text, r.x, r.y); break;
+    }
+  }
+  c.restore();
+}
+
+/* ───── editing helpers ───── */
+function collectFree(o, s, seen = new Set()) {
+  if (!o || seen.has(o.id)) return; seen.add(o.id);
+  if (o.kind === 'pt') { s.add(o.id); return; } if (o.kind === 'ptOn') return;
+  (o.refs || []).forEach(r => collectFree(O(r), s, seen));
+}
+function reparam(o, p) {
+  const r = P(o.refs[0]); if (!r) return;
+  if (r.t === 'l') o.t = ((p.x - r.ax) * (r.bx - r.ax) + (p.y - r.ay) * (r.by - r.ay)) / ((r.bx - r.ax) ** 2 + (r.by - r.ay) ** 2);
+  else if (r.t === 'c') o.th = mang(r, p);
+}
+function moveMany(list, dx, dy, mv, p) {
+  const free = new Set();
+  for (const o of list) {
+    if (o.type !== 'geo') { mv(o, dx, dy); continue; }
+    if (o.kind === 'ptOn') { if (list.length === 1 && p) reparam(o, p); continue; }
+    collectFree(o, free);
+  }
+  for (const id of free) { const q = O(id); if (q) { q.x += dx; q.y += dy; } }
+}
+function withDependents(ids) {
+  const out = new Set(ids); let ch = true;
+  while (ch) { ch = false; for (const o of objs()) if (o.type === 'geo' && !out.has(o.id) && (o.refs || []).some(r => out.has(r))) { out.add(o.id); ch = true; } }
+  return out;
+}
+const isPoint = o => o.type === 'geo' && !!ev(o) && ev(o).t === 'p';
+
+/* ───── naming / creation ───── */
+function nextName(kind) {
+  const used = new Set(objs().filter(o => o.type === 'geo').map(o => o.name));
+  const pts = ['pt', 'ptOn', 'mid', 'inter', 'polar', 'ptX', 'regv'].includes(kind);
+  const pool = pts ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : kind === 'angle' || kind === 'angle2' ? 'αβγδεζηθικλμνξπρστφχψω' : kind === 'meas' ? 'dsvwxyzuabcefghijklmnopqrt' : 'fghijklmnopqrstuvwxyzabcde';
+  for (let n = 0; n < 40; n++) for (const ch of pool) { const nm = ch + (n ? n : ''); if (!used.has(nm)) return nm; }
+  return uid();
+}
+const mk = (kind, props = {}) => {
+  const o = { id: uid(), type: 'geo', kind, ...props };
+  o.name = nextName(kind); o.lbl = ['pt', 'ptOn', 'mid', 'inter', 'polar', 'ptX', 'regv'].includes(kind);
+  objs().push(o); reset(); return o;       // added immediately so later names/refs resolve
+};
+
+/* ───── tool catalogue ───── */
+const fx = (...ty) => refs => refs.length < ty.length ? ty[refs.length] : null;
+const either = (a, b) => (refs, pr) => !refs.length ? [a, b] : refs.length === 1 ? (pr[0].t === (a === 'P' ? 'p' : 'x') ? b : a) : null;
+const isPt = r => r && r.t === 'p';
+const TX = (id, label, xf, auxType, num) => ({ id, cat: 'Transform', label, next: fx('X', auxType),
+  num, make: (r, c) => transform(r[0], xf, r[1], c.num) });
+function transform(id, xf, aux, num) {
+  const o = O(id), pr = P(id); if (!o || !pr) return null;
+  if (pr.t === 'p') return [mk('ptX', { refs: [id, aux], xf, num })];
+  if (xf === 'inv') { env.toast('Inversion works on points only'); return null; }
+  if (!o.refs || o.refs.some(r => !pp(r))) { env.toast("This object can't be transformed"); return null; }
+  const map = {}, out = [];
+  for (const r of new Set(o.refs)) { const n = mk('ptX', { refs: [r, aux], xf, num }); map[r] = n.id; out.push(n); }
+  const props = { ...o, id: uid(), refs: o.refs.map(r => map[r]) }; delete props.name; delete props.hidden;
+  if (o.kind === 'circR') { props.refs = [map[o.refs[0]]]; props.r = xf === 'dil' ? o.r * Math.abs(num) : o.r; }
+  const n = mk(o.kind, props); n.color = o.color; out.push(n); return out;
+}
+const TOOLS = [
+  { id: 'point', cat: 'Points', label: 'Point', next: fx('P'), make: () => [] },
+  { id: 'pointOn', cat: 'Points', label: 'Point on object', next: fx('ON'), make: () => [] },
+  { id: 'intersect', cat: 'Points', label: 'Intersect', next: fx('I', 'I'), make: r => { const n = intersect(P(r[0]), P(r[1])).length; if (!n) { env.toast('No intersection found'); return null; } return Array.from({ length: Math.min(n, 4) }, (_, i) => mk('inter', { refs: r, i })); } },
+  { id: 'midpoint', cat: 'Points', label: 'Midpoint or centre', next: (refs, pr) => !refs.length ? 'M' : refs.length === 1 && pr[0].t === 'p' ? 'P' : null, make: r => [mk('mid', { refs: r })] },
+
+  { id: 'line', cat: 'Lines', label: 'Line', next: fx('P', 'P'), make: r => [mk('line', { refs: r })] },
+  { id: 'segment', cat: 'Lines', label: 'Segment', next: fx('P', 'P'), make: r => [mk('seg', { refs: r })] },
+  { id: 'segLen', cat: 'Lines', label: 'Segment with length', next: fx('P'), num: { msg: 'Segment length (cm)', def: 3 }, make: (r, c) => { const b = mk('polar', { refs: [r[0]], r: c.num * CM, th: 0 }); return [b, mk('seg', { refs: [r[0], b.id] })]; } },
+  { id: 'ray', cat: 'Lines', label: 'Ray', next: fx('P', 'P'), make: r => [mk('ray', { refs: r })] },
+  { id: 'polyline', cat: 'Lines', label: 'Polyline', next: () => 'P', open: true, minPts: 2, make: r => [mk('polyline', { refs: r })] },
+  { id: 'vector', cat: 'Lines', label: 'Vector', next: fx('P', 'P'), make: r => [mk('vec', { refs: r })] },
+  { id: 'vecFrom', cat: 'Lines', label: 'Vector from point', next: fx('V', 'P'), make: r => { const q = mk('ptX', { refs: [r[1], r[0]], xf: 'trans' }); return [q, mk('vec', { refs: [r[1], q.id] })]; } },
+
+  { id: 'perp', cat: 'Special lines', label: 'Perpendicular line', next: either('P', 'L'), make: (r, c) => [mk('perp', { refs: c.pt(r[0]) ? r : [r[1], r[0]] })] },
+  { id: 'par', cat: 'Special lines', label: 'Parallel line', next: either('P', 'L'), make: (r, c) => [mk('par', { refs: c.pt(r[0]) ? r : [r[1], r[0]] })] },
+  { id: 'perpBis', cat: 'Special lines', label: 'Perpendicular bisector', next: (refs, pr) => !refs.length ? ['P', 'S'] : refs.length === 1 && pr[0].t === 'p' ? 'P' : null, make: r => [mk('perpBis', { refs: r })] },
+  { id: 'angBis', cat: 'Special lines', label: 'Angle bisector', next: fx('P', 'P', 'P'), hint: ['first point', 'vertex', 'third point'], make: r => [mk('angBis', { refs: r })] },
+  { id: 'tangent', cat: 'Special lines', label: 'Tangents', next: either('P', 'C'), make: (r, c) => { const x = c.pt(r[0]) ? r : [r[1], r[0]]; const a = [mk('tan', { refs: x, i: 0 })]; if (c.P(x[0]) && Math.abs(c.dist(c.P(x[0]), c.P(x[1])) - c.P(x[1]).r) > 1e-6) a.push(mk('tan', { refs: x, i: 1 })); return a; } },
+
+  { id: 'polygon', cat: 'Polygons', label: 'Polygon', next: () => 'P', closeOnFirst: true, minPts: 3, make: r => [mk('poly', { refs: r })] },
+  { id: 'regPoly', cat: 'Polygons', label: 'Regular polygon', next: fx('P', 'P'), num: { msg: 'Number of vertices', def: 5, int: true, min: 3 }, make: (r, c) => { const out = []; const ids = [r[0], r[1]]; for (let k = 2; k < c.num; k++) { const v = mk('regv', { refs: [r[0], r[1]], n: c.num, k }); out.push(v); ids.push(v.id); } out.push(mk('poly', { refs: ids })); return out; } },
+
+  { id: 'circ2', cat: 'Circles & arcs', label: 'Circle: centre & point', next: fx('P', 'P'), hint: ['centre', 'a point on the circle'], make: r => [mk('circ2', { refs: r })] },
+  { id: 'circR', cat: 'Circles & arcs', label: 'Circle: centre & radius', next: fx('P'), hint: ['centre'], num: { msg: 'Radius (cm)', def: 2 }, make: (r, c) => [mk('circR', { refs: r, r: c.num * CM })] },
+  { id: 'compassC', cat: 'Circles & arcs', label: 'Compass', next: (refs, pr) => !refs.length ? ['P', 'S'] : refs.length === 1 ? (pr[0].t === 'p' ? 'P' : 'P') : refs.length === 2 && pr[0].t === 'p' ? 'P' : null, hint: ['segment or first point', 'second point / centre', 'centre'], make: r => [mk('circR2', { refs: r })] },
+  { id: 'circ3', cat: 'Circles & arcs', label: 'Circle through 3 points', next: fx('P', 'P', 'P'), make: r => [mk('circ3', { refs: r })] },
+  { id: 'semi', cat: 'Circles & arcs', label: 'Semicircle', next: fx('P', 'P'), make: r => [mk('semi', { refs: r })] },
+  { id: 'arc', cat: 'Circles & arcs', label: 'Arc: centre, start, end', next: fx('P', 'P', 'P'), hint: ['centre', 'start point', 'end point'], make: r => [mk('arc', { refs: r })] },
+  { id: 'sector', cat: 'Circles & arcs', label: 'Sector: centre, start, end', next: fx('P', 'P', 'P'), hint: ['centre', 'start point', 'end point'], make: r => [mk('sector', { refs: r })] },
+  { id: 'arc3', cat: 'Circles & arcs', label: 'Arc through 3 points', next: fx('P', 'P', 'P'), make: r => [mk('arc3', { refs: r })] },
+  { id: 'sector3', cat: 'Circles & arcs', label: 'Sector through 3 points', next: fx('P', 'P', 'P'), make: r => [mk('sector3', { refs: r })] },
+
+  { id: 'ellipse', cat: 'Conics', label: 'Ellipse', next: fx('P', 'P', 'P'), hint: ['focus 1', 'focus 2', 'point on ellipse'], make: r => [mk('ellipse', { refs: r })] },
+  { id: 'hyper', cat: 'Conics', label: 'Hyperbola', next: fx('P', 'P', 'P'), hint: ['focus 1', 'focus 2', 'point on hyperbola'], make: r => [mk('hyper', { refs: r })] },
+  { id: 'parab', cat: 'Conics', label: 'Parabola', next: fx('P', 'L'), hint: ['focus', 'directrix (a line)'], make: r => [mk('parab', { refs: r })] },
+
+  { id: 'angle', cat: 'Measure', label: 'Angle', next: (refs, pr) => !refs.length ? ['P', 'L'] : pr[0].t === 'l' ? (refs.length === 1 ? 'L' : null) : refs.length < 3 ? 'P' : null, hint: ['first point (or a line)', 'vertex', 'third point'], make: r => [mk(P(r[0]).t === 'l' ? 'angle2' : 'angle', { refs: r })] },
+  { id: 'angleSize', cat: 'Measure', label: 'Angle with given size', next: fx('P', 'P'), hint: ['start point', 'vertex'], num: { msg: 'Angle (degrees)', def: 45 }, make: (r, c) => { const a = mk('ptX', { refs: [r[0], r[1]], xf: 'rot', num: c.num }); return [a, mk('angle', { refs: [r[0], r[1], a.id] })]; } },
+  { id: 'dist', cat: 'Measure', label: 'Distance or length', next: (refs, pr) => !refs.length ? 'D' : refs.length === 1 && pr[0].t === 'p' ? 'P' : null, make: r => [mk('meas', { refs: r, mt: 'dist' })] },
+  { id: 'area', cat: 'Measure', label: 'Area', next: fx('A'), make: r => [mk('meas', { refs: r, mt: 'area' })] },
+  { id: 'slope', cat: 'Measure', label: 'Slope', next: fx('L'), make: r => [mk('meas', { refs: r, mt: 'slope' })] },
+
+  TX('reflLine', 'Reflect about line', 'reflLine', 'L'),
+  TX('reflPt', 'Reflect about point', 'reflPt', 'P'),
+  TX('inv', 'Reflect about circle', 'inv', 'C'),
+  TX('rotate', 'Rotate around point', 'rot', 'P', { msg: 'Rotation angle (degrees, anticlockwise)', def: 90 }),
+  TX('translate', 'Translate by vector', 'trans', 'V'),
+  TX('dilate', 'Dilate from point', 'dil', 'P', { msg: 'Dilation factor', def: 2 }),
+
+  { id: 'showHide', cat: 'General', label: 'Show / hide object', special: 'vis' },
+  { id: 'showLabel', cat: 'General', label: 'Show / hide label', special: 'lbl' },
+  { id: 'delete', cat: 'General', label: 'Delete object', special: 'del' },
+];
+const CATS = [...new Set(TOOLS.map(t => t.cat))];
+const DESC = { P: 'a point', L: 'a line', S: 'a segment', C: 'a circle', Y: 'a polygon', O: 'an object', X: 'an object', D: 'a point, segment, circle or polygon', A: 'a polygon or circle', M: 'a point, segment or circle', V: 'a vector', I: 'an object to intersect', ON: 'an object to place the point on' };
+function match(n, r, o) {
+  if (!r) return false;
+  switch (n) {
+    case 'P': return r.t === 'p'; case 'L': return r.t === 'l'; case 'S': return r.t === 'l' && (o.kind === 'seg' || o.kind === 'vec');
+    case 'C': return r.t === 'c'; case 'Y': return r.t === 'poly'; case 'V': return o.kind === 'vec';
+    case 'O': return r.t !== 'txt' && r.t !== 'ang'; case 'ON': return r.t === 'l' || r.t === 'c';
+    case 'X': return ['p', 'l', 'c', 'poly', 'pl'].includes(r.t); case 'I': return ['l', 'c', 'poly', 'pl'].includes(r.t);
+    case 'D': return ['p', 'l', 'c', 'poly', 'pl'].includes(r.t); case 'A': return r.t === 'poly' || r.t === 'c';
+    case 'M': return r.t === 'p' || (r.t === 'l' && (o.kind === 'seg' || o.kind === 'vec')) || r.t === 'c';
+  }
+  return false;
+}
+
+/* ───── tool engine ───── */
+const state = { tool: null, refs: [], created: [], before: null, ghost: false };
+const T = () => TOOLS.find(t => t.id === state.tool);
+function setTool(id) { cancel(); state.tool = id; state.ghost = id === 'showHide'; env.changed(); }
+function cancel() {
+  if (state.created.length) { const dead = new Set(state.created); env.setObjs(objs().filter(o => !dead.has(o.id))); }
+  state.refs = []; state.created = []; state.before = null; reset(); env.changed();
+}
+function hintText() {
+  const t = T(); if (!t) return '';
+  if (t.special) return t.label + ': click an object';
+  const need = t.next(state.refs, state.refs.map(P));
+  if (!need) return t.label;
+  const n = state.refs.length, d = t.hint?.[n] || [].concat(need).map(x => DESC[x]).join(' or ');
+  let h = `${t.label}: select ${d}`;
+  if (t.closeOnFirst && n >= 3) h += ' — click the first point to close';
+  if (t.open && n >= 2) h += ' — double-click to finish';
+  return h;
+}
+function pick(need, p, z) {
+  const tol = 9 / z, needs = [].concat(need), list = objs().filter(o => o.type === 'geo').reverse();
+  const ok = o => !o.hidden || state.ghost;
+  if (needs.includes('P')) { const e = list.find(o => ok(o) && ev(o)?.t === 'p' && hit(o, p, tol)); if (e) return e.id; }
+  for (const n of needs) if (n !== 'P') { const e = list.find(o => ok(o) && match(n, ev(o), o) && (ev(o).t !== 'p') && hit(o, p, tol)); if (e) return e.id; }
+  if (needs.includes('ON') || needs.includes('P')) {
+    const on = list.find(o => ok(o) && ['l', 'c'].includes(ev(o)?.t) && hit(o, p, tol));
+    if (on) {
+      const r = ev(on), n = r.t === 'l' ? { t: ((p.x - r.ax) * (r.bx - r.ax) + (p.y - r.ay) * (r.by - r.ay)) / ((r.bx - r.ax) ** 2 + (r.by - r.ay) ** 2) } : { th: mang(r, p) };
+      const q = mk('ptOn', { refs: [on.id], ...n }); state.created.push(q.id); return q.id;
+    }
+  }
+  if (needs.includes('P')) { const q = mk('pt', { x: p.x, y: p.y }); state.created.push(q.id); return q.id; }
+  return null;
+}
+function click(p, z) {
+  const t = T(); if (!t) return false;
+  if (t.special) {
+    const e = objs().filter(o => o.type === 'geo').reverse().find(o => (!o.hidden || state.ghost) && hit(o, p, 9 / z));
+    if (!e) return true;
+    env.action(() => {
+      if (t.special === 'vis') e.hidden = !e.hidden; else if (t.special === 'lbl') e.lbl = !e.lbl;
+      else { const ids = withDependents([e.id]); env.setObjs(objs().filter(o => !ids.has(o.id))); }
+    }); reset(); env.changed(); return true;
+  }
+  if (!state.refs.length) { state.before = env.snap(); state.created = []; }
+  const need = t.next(state.refs, state.refs.map(P)); if (!need) return true;
+  // polygon: clicking the first point closes it
+  if (t.closeOnFirst && state.refs.length >= 3) { const e = objs().filter(o => o.type === 'geo').reverse().find(o => ev(o)?.t === 'p' && hit(o, p, 9 / z)); if (e && e.id === state.refs[0]) { finish(); return true; } }
+  const id = pick(need, p, z);
+  if (!id) { env.toast('Select ' + [].concat(need).map(x => DESC[x]).join(' or ')); return true; }
+  state.refs.push(id); state.lastP = p; reset();
+  if (!t.next(state.refs, state.refs.map(P))) finish(); else env.changed();
+  return true;
+}
+function finish() {
+  const t = T(); if (!t) return;
+  if (t.minPts && state.refs.length < t.minPts) return;
+  const refs = [...state.refs], before = state.before, created = state.created;
+  const done = num => {
+    const mkn = objs().length;
+    const out = t.make(refs, { num, P, dist, pt: id => P(id)?.t === 'p' });
+    if (out === null) { state.refs = [], state.created = created; cancel(); return; }
+    void mkn; state.refs = []; state.created = []; state.before = null; reset(); env.commit(before); env.changed();
+  };
+  if (t.num) { state.refs = []; env.ask(t.num, v => { v == null ? (state.created = created, cancel()) : done(v); }); }
+  else done();
+}
+const dblclick = () => { const t = T(); if (t && t.open) { /* the 2nd click of the double-click added a duplicate point: drop it */ const last = state.refs.length > 2 && state.refs[state.refs.length - 1] === state.refs[state.refs.length - 2]; if (last) state.refs.pop(); finish(); } };
+function preview(c, z, hover) {
+  const t = T(); if (!t || t.special) return;
+  c.save(); c.lineWidth = 1.5 / z;
+  for (const id of state.refs) { const r = P(id); if (!r) continue; c.strokeStyle = '#e53935'; c.beginPath(); if (r.t === 'p') c.arc(r.x, r.y, 9 / z, 0, TAU); else { const b = gbox(O(id)); c.rect(b.x, b.y, b.w, b.h); } c.stroke(); }
+  const last = state.refs.length && P(state.refs[state.refs.length - 1]);
+  if (last && last.t === 'p' && hover) { c.setLineDash([6 / z, 5 / z]); c.strokeStyle = GEO; c.beginPath(); c.moveTo(last.x, last.y); c.lineTo(hover.x, hover.y); c.stroke(); }
+  c.restore();
+}
+
+return { TOOLS, CATS, state, setTool, cancel, click, finish, dblclick, preview, draw, hit, gbox, reset, moveMany, withDependents, isPoint, hintText, ev, O, P };
+};
+
+</script>
+<script>
+/* Rishit's Canvas – Whiteboard
+ * Vanilla JS, no build step. Objects are kept as vectors in world coordinates;
+ * the camera (pan / zoom) is stored per board. */
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const NAVY = '#000455';
+const FONTS = { sans: "'Quicksand','Segoe UI',system-ui,sans-serif", serif: "Georgia,'Times New Roman',serif", mono: "'Courier New',monospace", hand: "'Comic Sans MS','Segoe Print',cursive" };
+const COLORS = ['#000455', '#111111', '#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#ffffff', '#9e9e9e'];
+const MIN_Z = 0.1, MAX_Z = 4;
+let uidN = 0; const uid = () => Date.now().toString(36) + (uidN++).toString(36) + Math.random().toString(36).slice(2, 5);
+
+/* ───────── State ───────── */
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1;
+const newBoard = () => ({ id: uid(), objs: [], bg: { type: 'none', color: '#ffffff', img: null }, view: { x: 0, y: 0, z: 1 }, undo: [], redo: [], inst: [] });
+let boards = [newBoard()], cur = 0;
+const imgs = new Map();                     // id -> {src, el}
+let geo = null;
+let tool = 'pen', prevTool = 'pen', sel = new Set(), clip = [];
+const S = {                                 // tool settings
+  pen: { color: '#000455', w: 4, hl: false },
+  eraser: { size: 28 },
+  shape: { kind: 'rect', color: '#000455', w: 3, dash: 'solid', more: false },
+  sel: { mode: 'lasso' },
+  text: { size: 28, color: '#000455', font: 'sans' },
+};
+const B = () => boards[cur];
+const view = () => B().view;
+
+/* ───────── History ───────── */
+const snap = () => structuredClone({ objs: B().objs, bg: B().bg });
+function pushUndo(before) { const b = B(); b.undo.push(before); if (b.undo.length > 100) b.undo.shift(); b.redo.length = 0; syncUI(); save(); }
+function restore(s) { const b = B(); b.objs = s.objs; b.bg = s.bg; sel = new Set([...sel].filter(id => b.objs.some(o => o.id === id))); closeEditor(true); dirty(); syncUI(); save(); }
+function undo() { const b = B(); if (!b.undo.length) return; b.redo.push(snap()); restore(b.undo.pop()); }
+function redo() { const b = B(); if (!b.redo.length) return; b.undo.push(snap()); restore(b.redo.pop()); }
+function action(fn) { const before = snap(); fn(); pushUndo(before); dirty(); }
+
+/* ───────── Geometry helpers ───────── */
+const toW = (sx, sy) => { const v = view(); return { x: (sx - v.x) / v.z, y: (sy - v.y) / v.z }; };
+const toS = (x, y) => { const v = view(); return { x: x * v.z + v.x, y: y * v.z + v.y }; };
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
+  let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0; t = clamp(t, 0, 1);
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+function inPoly(p, pts) {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a[1] > p.y) !== (b[1] > p.y) && p.x < (b[0] - a[0]) * (p.y - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+  }
+  return c;
+}
+const mctx = document.createElement('canvas').getContext('2d');
+function measure(o) {
+  mctx.font = `${o.size}px ${FONTS[o.font] || FONTS.sans}`;
+  const lines = o.text.split('\n'); let w = 0;
+  for (const l of lines) w = Math.max(w, mctx.measureText(l || ' ').width);
+  o.w = Math.max(w, 8); o.h = lines.length * o.size * 1.25; return o;
+}
+function shapeBox(o) { return { x: Math.min(o.x1, o.x2), y: Math.min(o.y1, o.y2), w: Math.abs(o.x2 - o.x1), h: Math.abs(o.y2 - o.y1) }; }
+const OPEN = new Set(['line', 'arrow', 'darrow']);
+const regular = (n, x, y, w, h, r0) => { const p = []; for (let i = 0; i < n; i++) { const a = r0 + i * Math.PI * 2 / n; p.push([x + w / 2 + Math.cos(a) * w / 2, y + h / 2 + Math.sin(a) * h / 2]); } return p; };
+const HEART = (() => { const r = []; for (let i = 0; i < 72; i++) { const t = i / 72 * Math.PI * 2; r.push([16 * Math.sin(t) ** 3, -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))]); } return r; })();
+function shapePoly(o) {
+  const { x, y, w, h } = shapeBox(o), X = f => x + w * f, Y = f => y + h * f, poly = pts => ({ pts, closed: true });
+  switch (o.kind) {
+    case 'rect': case 'square': return poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]]);
+    case 'triangle': return poly([[X(.5), y], [x + w, y + h], [x, y + h]]);
+    case 'rtriangle': return poly([[x, y], [x + w, y + h], [x, y + h]]);
+    case 'diamond': case 'rhombus': return poly([[X(.5), y], [x + w, Y(.5)], [X(.5), y + h], [x, Y(.5)]]);
+    case 'parallelogram': return poly([[X(.25), y], [x + w, y], [X(.75), y + h], [x, y + h]]);
+    case 'trapezium': return poly([[X(.15), y], [X(.7), y], [x + w, y + h], [x, y + h]]);
+    case 'itrapezium': return poly([[X(.22), y], [X(.78), y], [x + w, y + h], [x, y + h]]);
+    case 'ellipse': case 'circle': return poly(regular(64, x, y, w, h, 0));
+    case 'pentagon': return poly(regular(5, x, y, w, h, -Math.PI / 2));
+    case 'hexagon': return poly(regular(6, x, y, w, h, 0));
+    case 'octagon': return poly(regular(8, x, y, w, h, Math.PI / 8));
+    case 'star': { const p = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .42 : 1; p.push([x + w / 2 + Math.cos(a) * r * w / 2, y + h / 2 + Math.sin(a) * r * h / 2]); } return poly(p); }
+    case 'heart': return poly(HEART.map(q => [X((q[0] + 16) / 32), Y((q[1] + 17) / 29)]));
+    case 'cross': return poly([[X(1 / 3), y], [X(2 / 3), y], [X(2 / 3), Y(1 / 3)], [x + w, Y(1 / 3)], [x + w, Y(2 / 3)], [X(2 / 3), Y(2 / 3)], [X(2 / 3), y + h], [X(1 / 3), y + h], [X(1 / 3), Y(2 / 3)], [x, Y(2 / 3)], [x, Y(1 / 3)], [X(1 / 3), Y(1 / 3)]]);
+    default: return { pts: [[o.x1, o.y1], [o.x2, o.y2]], closed: false };
+  }
+}
+function gbox(o) {                         // geometric bounding box (no stroke width)
+  if (o.type === 'geo') return geo.gbox(o);
+  if (o.type === 'stroke') {
+    let a = 1e18, b = 1e18, c = -1e18, d = -1e18;
+    for (let i = 0; i < o.pts.length; i += 2) { a = Math.min(a, o.pts[i]); c = Math.max(c, o.pts[i]); b = Math.min(b, o.pts[i + 1]); d = Math.max(d, o.pts[i + 1]); }
+    return { x: a, y: b, w: c - a, h: d - b };
+  }
+  if (o.type === 'shape') return shapeBox(o);
+  return { x: o.x, y: o.y, w: o.w, h: o.h };
+}
+function hit(o, p, tol) {
+  if (o.type === 'geo') return !(o.hidden && !geo.state.ghost) && geo.hit(o, p, tol);
+  if (o.type === 'stroke') {
+    const r = o.w * (o.hl ? 1.5 : .5) + tol, q = o.pts;
+    if (q.length === 2) return Math.hypot(p.x - q[0], p.y - q[1]) <= r;
+    for (let i = 0; i < q.length - 2; i += 2) if (segDist(p.x, p.y, q[i], q[i + 1], q[i + 2], q[i + 3]) <= r) return true;
+    return false;
+  }
+  if (o.type === 'shape') {
+    const { pts, closed } = shapePoly(o);
+    if (closed && o.fill && inPoly(p, pts)) return true;
+    const n = pts.length, r = o.w / 2 + tol;
+    for (let i = 0; i < (closed ? n : n - 1); i++) { const a = pts[i], b = pts[(i + 1) % n]; if (segDist(p.x, p.y, a[0], a[1], b[0], b[1]) <= r) return true; }
+    return false;
+  }
+  return p.x >= o.x - tol && p.x <= o.x + o.w + tol && p.y >= o.y - tol && p.y <= o.y + o.h + tol;
+}
+function moveObj(o, dx, dy) {
+  if (o.type === 'stroke') for (let i = 0; i < o.pts.length; i += 2) { o.pts[i] += dx; o.pts[i + 1] += dy; }
+  else if (o.type === 'shape') { o.x1 += dx; o.x2 += dx; o.y1 += dy; o.y2 += dy; }
+  else { o.x += dx; o.y += dy; }
+}
+function fitObj(o0, o, nb) {               // map o0's box to nb, write into o
+  const ob = gbox(o0), sx = ob.w ? nb.w / ob.w : 1, sy = ob.h ? nb.h / ob.h : 1;
+  const fx = x => nb.x + (x - ob.x) * sx, fy = y => nb.y + (y - ob.y) * sy;
+  if (o.type === 'stroke') for (let i = 0; i < o.pts.length; i += 2) { o.pts[i] = fx(o0.pts[i]); o.pts[i + 1] = fy(o0.pts[i + 1]); }
+  else if (o.type === 'shape') { o.x1 = fx(o0.x1); o.x2 = fx(o0.x2); o.y1 = fy(o0.y1); o.y2 = fy(o0.y2); }
+  else if (o.type === 'image') { o.x = nb.x; o.y = nb.y; o.w = nb.w; o.h = nb.h; }
+  else { o.size = Math.max(6, o0.size * sy); o.x = nb.x; o.y = nb.y; measure(o); }
+}
+const objs = () => B().objs;
+const selObjs = () => objs().filter(o => sel.has(o.id));
+const selectLike = () => tool === 'select' || (tool === 'tools' && !geo.state.tool);
+geo = WBGeo({
+  objs, uid, CM: 37.795, z: () => view().z, snap: () => snap(), commit: b => { pushUndo(b); dirty(); }, action: fn => action(fn),
+  setObjs: a => { B().objs = a; }, toast: m => toast(m), ask: (spec, cb) => askNumber(spec, cb), changed: () => geoChanged(),
+});
+function unionBox(list) {
+  let a = 1e18, b = 1e18, c = -1e18, d = -1e18;
+  for (const o of list) { const g = gbox(o); a = Math.min(a, g.x); b = Math.min(b, g.y); c = Math.max(c, g.x + g.w); d = Math.max(d, g.y + g.h); }
+  return list.length ? { x: a, y: b, w: c - a, h: d - b } : null;
+}
+
+/* ───────── Backdrop ───────── */
+const isDark = c => { const n = parseInt(c.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) < 110; };
+function drawBackdrop(c, v, w, h, bg) {
+  c.fillStyle = bg.color || '#fff'; c.fillRect(0, 0, w, h);
+  if (bg.type === 'image' && bg.img && imgs.get(bg.img)?.el?.complete) {
+    const im = imgs.get(bg.img).el, iw = 1440, ih = iw * im.naturalHeight / im.naturalWidth;
+    c.drawImage(im, v.x, v.y, iw * v.z, ih * v.z);
+  }
+  const t = bg.type; if (!['grid', 'dots', 'lines', 'graph'].includes(t)) return;
+  const dark = isDark(bg.color || '#fff');
+  const col = a => dark ? `rgba(255,255,255,${a})` : `rgba(0,4,85,${a})`;
+  let sp = t === 'graph' ? 20 : 40; while (sp * v.z < 10) sp *= 5;
+  const s = sp * v.z, ox = ((v.x % s) + s) % s, oy = ((v.y % s) + s) % s;
+  c.lineWidth = 1;
+  if (t === 'dots') {
+    c.fillStyle = col(.4);
+    for (let x = ox; x < w; x += s) for (let y = oy; y < h; y += s) c.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+    return;
+  }
+  const line = (x1, y1, x2, y2) => { c.moveTo(x1, y1); c.lineTo(x2, y2); };
+  c.beginPath(); c.strokeStyle = col(t === 'graph' ? .1 : .16);
+  if (t !== 'lines') for (let x = ox; x < w; x += s) line(Math.round(x) + .5, 0, Math.round(x) + .5, h);
+  for (let y = oy; y < h; y += s) line(0, Math.round(y) + .5, w, Math.round(y) + .5);
+  c.stroke();
+  if (t === 'graph') {                      // heavier line every 5 cells
+    const S5 = s * 5, ox5 = ((v.x % S5) + S5) % S5, oy5 = ((v.y % S5) + S5) % S5;
+    c.beginPath(); c.strokeStyle = col(.28);
+    for (let x = ox5; x < w; x += S5) line(Math.round(x) + .5, 0, Math.round(x) + .5, h);
+    for (let y = oy5; y < h; y += S5) line(0, Math.round(y) + .5, w, Math.round(y) + .5);
+    c.stroke();
+  }
+}
+
+/* ───────── Object rendering ───────── */
+function drawObj(c, o, z = view().z) {
+  if (o.type === 'geo') { geo.draw(c, o, z, { sel: sel.has(o.id), ghost: geo.state.ghost }); return; }
+  c.save();
+  if (o.type === 'stroke') {
+    c.strokeStyle = o.color; c.fillStyle = o.color; c.lineCap = o.hl ? 'butt' : 'round'; c.lineJoin = 'round';
+    c.lineWidth = o.w * (o.hl ? 3 : 1); if (o.hl) c.globalAlpha = .4;
+    const p = o.pts;
+    if (p.length <= 2) { c.beginPath(); c.arc(p[0], p[1], o.w * (o.hl ? 1.5 : .5), 0, 7); c.fill(); }
+    else {
+      c.beginPath(); c.moveTo(p[0], p[1]);
+      for (let i = 2; i < p.length - 2; i += 2) c.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2);
+      c.lineTo(p[p.length - 2], p[p.length - 1]); c.stroke();
+    }
+  } else if (o.type === 'shape') {
+    c.strokeStyle = o.color; c.lineWidth = o.w; c.lineJoin = 'round'; c.lineCap = 'round';
+    if (o.dash === 'dotted') c.setLineDash([0.01, o.w * 2.6]); else if (o.dash === 'dashed') c.setLineDash([o.w * 3.5, o.w * 2.5]);
+    const { x, y, w, h } = shapeBox(o); c.beginPath();
+    if (o.kind === 'ellipse' || o.kind === 'circle') c.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 7);
+    else { const { pts, closed } = shapePoly(o); pts.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); if (closed) c.closePath(); }
+    c.stroke(); c.setLineDash([]);
+    if (o.kind === 'arrow' || o.kind === 'darrow') {
+      const ln = Math.hypot(o.x2 - o.x1, o.y2 - o.y1), a = Math.atan2(o.y2 - o.y1, o.x2 - o.x1), L = Math.min(Math.max(14, o.w * 4), ln * .6 + 2); c.beginPath();
+      const head = (px, py, ang) => { for (const s of [-1, 1]) { c.moveTo(px, py); c.lineTo(px - L * Math.cos(ang + s * .45), py - L * Math.sin(ang + s * .45)); } };
+      head(o.x2, o.y2, a); if (o.kind === 'darrow') head(o.x1, o.y1, a + Math.PI); c.stroke();
+    }
+  } else if (o.type === 'text') {
+    c.fillStyle = o.color; c.textBaseline = 'top'; c.font = `${o.size}px ${FONTS[o.font] || FONTS.sans}`;
+    o.text.split('\n').forEach((l, i) => c.fillText(l, o.x, o.y + i * o.size * 1.25 + o.size * .12));
+  } else if (o.type === 'image') {
+    const e = imgs.get(o.img)?.el; if (e && e.complete) c.drawImage(e, o.x, o.y, o.w, o.h);
+  }
+  c.restore();
+}
+
+/* ───────── Geometry instruments (ruler, set square, protractor) ───────── */
+const CM = 37.795;
+const triHit = (l) => l.x >= -180 && l.y <= 180 && l.y >= l.x;
+const INST = {
+  ruler: { hit: l => Math.abs(l.x) <= 320 && Math.abs(l.y) <= 32, edges: [[-320, -32, 320, -32], [-320, 32, 320, 32]], handle: [346, 0], close: [-346, 0] },
+  square: { hit: triHit, edges: [[-180, 180, 180, 180], [-180, 180, -180, -180], [180, 180, -180, -180]], handle: [30, -30], close: [-150, 150] },
+  protractor: { hit: l => (l.x * l.x + (l.y - 100) ** 2 <= 40000 && l.y <= 100) || (Math.abs(l.x) <= 200 && l.y >= 100 && l.y <= 124), edges: [[-200, 100, 200, 100]], handle: [178, 112], close: [-178, 112] },
+  compass: { hit: () => false, edges: [], handle: [0, 0], close: [0, 0] },
+};
+const loc2w = (i, x, y) => { const c = Math.cos(i.a), s = Math.sin(i.a); return { x: i.x + x * c - y * s, y: i.y + x * s + y * c }; };
+const w2loc = (i, p) => { const c = Math.cos(-i.a), s = Math.sin(-i.a), dx = p.x - i.x, dy = p.y - i.y; return { x: dx * c - dy * s, y: dx * s + dy * c }; };
+function drawTicks(c, x0, y0, x1, y1, nx, ny, z) {  // cm/mm ticks along a segment, normal (nx,ny) points inward
+  const len = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0) / len, uy = (y1 - y0) / len, mm = CM / 10;
+  c.beginPath();
+  for (let i = 0; i * mm <= len; i++) {
+    const l = i % 10 === 0 ? 16 : i % 5 === 0 ? 11 : 6, px = x0 + ux * i * mm, py = y0 + uy * i * mm;
+    c.moveTo(px, py); c.lineTo(px + nx * l, py + ny * l);
+  }
+  c.stroke();
+  c.fillStyle = NAVY; c.font = '11px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let i = 10; i * mm <= len - 10; i += 10) c.fillText(String(i / 10), x0 + ux * i * mm + nx * 26, y0 + uy * i * mm + ny * 26);
+}
+const CL = 240;
+function compassGeom(i) { const r = clamp(i.r || 150, 20, CL * 2 - 30), hh = Math.sqrt(CL * CL - (r / 2) ** 2); return { r, T: [r, 0], H: [r / 2, -hh], X: [r / 2, -hh - 38] }; }
+function drawCompass(c, i, z) {
+  const g = compassGeom(i); c.lineJoin = 'round'; c.lineCap = 'round';
+  c.save(); c.strokeStyle = 'rgba(0,4,85,.28)'; c.lineWidth = 1 / z; c.setLineDash([6 / z, 6 / z]); c.beginPath(); c.arc(0, 0, g.r, 0, 7); c.stroke(); c.restore();
+  c.strokeStyle = '#6b7280'; c.lineWidth = 6; c.beginPath(); c.moveTo(0, 0); c.lineTo(g.H[0], g.H[1]); c.stroke();           // needle leg
+  c.strokeStyle = '#c9964b'; c.lineWidth = 7; c.beginPath(); c.moveTo(g.T[0], g.T[1]); c.lineTo(g.H[0], g.H[1]); c.stroke();  // pencil leg
+  const u = [(g.T[0] - g.H[0]) / CL, (g.T[1] - g.H[1]) / CL];
+  c.strokeStyle = NAVY; c.lineWidth = 7; c.beginPath(); c.moveTo(g.T[0], g.T[1]); c.lineTo(g.T[0] - u[0] * 26, g.T[1] - u[1] * 26); c.stroke();
+  c.fillStyle = NAVY; c.beginPath(); c.arc(0, 0, 4, 0, 7); c.fill();
+  c.strokeStyle = NAVY; c.lineWidth = 3; c.beginPath(); c.moveTo(g.H[0], g.H[1]); c.lineTo(g.X[0], g.X[1] + 12); c.stroke();
+  c.fillStyle = '#fff'; c.lineWidth = 2.5; c.beginPath(); c.arc(g.H[0], g.H[1], 9, 0, 7); c.fill(); c.stroke();
+  c.beginPath(); c.arc(g.T[0], g.T[1], 11 / z, 0, 7); c.lineWidth = 1.5 / z; c.stroke();
+  const r = 11 / z, k = r * .4; c.beginPath(); c.arc(g.X[0], g.X[1], r, 0, 7); c.fillStyle = '#fff'; c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(g.X[0] - k, g.X[1] - k); c.lineTo(g.X[0] + k, g.X[1] + k); c.moveTo(g.X[0] + k, g.X[1] - k); c.lineTo(g.X[0] - k, g.X[1] + k); c.stroke();
+}
+function drawInst(c, i, z) {
+  c.save(); c.translate(i.x, i.y); c.rotate(i.a);
+  if (i.k === 'compass') { drawCompass(c, i, z); c.restore(); return; }
+  c.fillStyle = 'rgba(110,160,255,.28)'; c.strokeStyle = NAVY; c.lineWidth = 1.5 / z; c.lineJoin = 'round';
+  c.beginPath();
+  if (i.k === 'ruler') { c.rect(-320, -32, 640, 64); c.fill(); c.stroke(); c.lineWidth = 1; drawTicks(c, -320, -32, 320, -32, 0, 1, z); }
+  else if (i.k === 'square') {
+    c.moveTo(-180, 180); c.lineTo(180, 180); c.lineTo(-180, -180); c.closePath();
+    c.moveTo(-135, 135); c.lineTo(-135, -45); c.lineTo(45, 135); c.closePath(); c.fill('evenodd'); c.stroke();
+    c.lineWidth = 1; drawTicks(c, -180, 180, 180, 180, 0, -1, z); drawTicks(c, -180, 180, -180, -180, 1, 0, z);
+  } else {
+    c.arc(0, 100, 200, Math.PI, 0); c.lineTo(200, 124); c.lineTo(-200, 124); c.closePath(); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(-200, 100); c.lineTo(200, 100); c.stroke();
+    c.beginPath(); c.arc(0, 100, 6, 0, 7); c.stroke();
+    c.lineWidth = 1; c.beginPath();
+    for (let d = 0; d <= 180; d++) {
+      const l = d % 10 === 0 ? 16 : d % 5 === 0 ? 11 : 6, a = d * Math.PI / 180, ca = Math.cos(a), sa = -Math.sin(a);
+      c.moveTo(ca * 200, 100 + sa * 200); c.lineTo(ca * (200 - l), 100 + sa * (200 - l));
+    }
+    c.stroke(); c.fillStyle = NAVY; c.font = '11px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (let d = 10; d <= 170; d += 10) { const a = d * Math.PI / 180; c.fillText(d, Math.cos(a) * 166, 100 - Math.sin(a) * 166); }
+  }
+  // close + rotate handles (constant on-screen size)
+  const def = INST[i.k], r = 11 / z;
+  for (const [pt, kind] of [[def.close, 'x'], [def.handle, 'r']]) {
+    c.beginPath(); c.arc(pt[0], pt[1], r, 0, 7); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 1.5 / z; c.strokeStyle = NAVY; c.stroke();
+    c.beginPath();
+    if (kind === 'x') { const k = r * .4; c.moveTo(pt[0] - k, pt[1] - k); c.lineTo(pt[0] + k, pt[1] + k); c.moveTo(pt[0] + k, pt[1] - k); c.lineTo(pt[0] - k, pt[1] + k); }
+    else c.arc(pt[0], pt[1], r * .5, -Math.PI * .8, Math.PI * .6);
+    c.stroke();
+  }
+  c.restore();
+}
+function instAt(p, z, edgeOnly) {
+  const list = B().inst;
+  for (let n = list.length - 1; n >= 0; n--) {
+    const i = list[n], def = INST[i.k], l = w2loc(i, p), r = 14 / z;
+    if (i.k === 'compass') {
+      const g = compassGeom(i), dd = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]), q = [l.x, l.y];
+      if (dd(q, g.X) <= r) return { i, part: 'close' };
+      if (dd(q, g.T) <= r) return { i, part: 'tip' };
+      if (dd(q, g.H) <= r || segDist(l.x, l.y, 0, 0, g.H[0], g.H[1]) <= 8 + 4 / z || segDist(l.x, l.y, g.T[0], g.T[1], g.H[0], g.H[1]) <= 8 + 4 / z) return { i, part: 'body' };
+      continue;
+    }
+    if (Math.hypot(l.x - def.close[0], l.y - def.close[1]) <= r) return { i, part: 'close' };
+    if (Math.hypot(l.x - def.handle[0], l.y - def.handle[1]) <= r) return { i, part: 'rot' };
+    if (def.hit(l)) {
+      if (edgeOnly) {
+        for (const e of def.edges) if (segDist(l.x, l.y, e[0], e[1], e[2], e[3]) <= r) return { i, part: 'edge' };
+      }
+      return { i, part: 'body' };
+    }
+  }
+  return null;
+}
+function snapEdge(p, z) {                    // nearest instrument edge within reach -> world segment
+  let best = null, bd = 14 / z;
+  for (const i of B().inst) for (const e of INST[i.k].edges) {
+    const a = loc2w(i, e[0], e[1]), b = loc2w(i, e[2], e[3]), d = segDist(p.x, p.y, a.x, a.y, b.x, b.y);
+    if (d < bd) { bd = d; best = { a, b }; }
+  }
+  return best;
+}
+function projEdge(sn, p) {
+  const dx = sn.b.x - sn.a.x, dy = sn.b.y - sn.a.y, t = clamp(((p.x - sn.a.x) * dx + (p.y - sn.a.y) * dy) / (dx * dx + dy * dy), 0, 1);
+  return { x: sn.a.x + dx * t, y: sn.a.y + dy * t };
+}
+
+/* ───────── Rendering ───────── */
+let needs = false;
+function dirty() { if (geo) geo.reset(); if (!needs) { needs = true; requestAnimationFrame(frame); } }
+let hover = null, marquee = null, drawing = null;   // overlay state
+const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+function handlePos(b) {
+  const x2 = b.x + b.w, y2 = b.y + b.h, mx = b.x + b.w / 2, my = b.y + b.h / 2;
+  return { nw: [b.x, b.y], n: [mx, b.y], ne: [x2, b.y], e: [x2, my], se: [x2, y2], s: [mx, y2], sw: [b.x, y2], w: [b.x, my] };
+}
+function frame() {
+  needs = false;
+  const v = view();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawBackdrop(ctx, v, W, H, B().bg);
+  ctx.setTransform(dpr * v.z, 0, 0, dpr * v.z, dpr * v.x, dpr * v.y);
+  const x0 = -v.x / v.z, y0 = -v.y / v.z, x1 = x0 + W / v.z, y1 = y0 + H / v.z;
+  for (const pass of [0, 1]) for (const o of objs()) {
+    if ((pass === 1) !== (o.type === 'geo' && geo.isPoint(o))) continue;   // construction points on top
+    if (o.type !== 'geo') {
+      const g = gbox(o), pad = (o.w || 0) * 2 + 4;
+      if (g.x - pad > x1 || g.x + g.w + pad < x0 || g.y - pad > y1 || g.y + g.h + pad < y0) continue;
+    }
+    drawObj(ctx, o, v.z);
+  }
+  for (const i of B().inst) drawInst(ctx, i, v.z);
+  if (tool === 'tools' && geo.state.tool) geo.preview(ctx, v.z, hover ? toW(hover.x, hover.y) : null);
+  // selection overlay in screen space
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const list = selObjs();
+  if (list.length && selectLike() && !list.every(o => o.type === 'geo') && !(drawing && drawing.t === 'draw')) {
+    const ub = unionBox(list), a = toS(ub.x, ub.y), b = toS(ub.x + ub.w, ub.y + ub.h);
+    ctx.strokeStyle = '#1e88e5'; ctx.lineWidth = 1; ctx.setLineDash([5, 4]);
+    ctx.strokeRect(a.x - 4, a.y - 4, b.x - a.x + 8, b.y - a.y + 8); ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    for (const [k, h] of selHandles(list)) { const s = toS(h[0], h[1]); ctx.beginPath(); ctx.rect(s.x - 5, s.y - 5, 10, 10); ctx.fill(); ctx.stroke(); void k; }
+  }
+  if (marquee) {
+    const m = marquee, a = toS(m.x1, m.y1), b = toS(m.x2, m.y2); ctx.fillStyle = 'rgba(30,136,229,.12)'; ctx.strokeStyle = '#1e88e5'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    if (m.mode === 'ellipse') ctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, 7);
+    else if (m.mode === 'lasso' || m.mode === 'touch') { m.pts.forEach((q, i) => { const s = toS(q[0], q[1]); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); }); if (m.mode === 'lasso') ctx.closePath(); }
+    else ctx.rect(a.x, a.y, b.x - a.x, b.y - a.y);
+    if (m.mode !== 'touch') ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (tool === 'eraser' && hover) { ctx.beginPath(); ctx.arc(hover.x, hover.y, S.eraser.size / 2, 0, 7); ctx.strokeStyle = NAVY; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = 'rgba(0,4,85,.06)'; ctx.fill(); }
+  placeSelBar();
+}
+function selHandles(list) {                  // [[name,[wx,wy]]]
+  if (list.length === 1 && list[0].type === 'shape' && OPEN.has(list[0].kind)) return [['p1', [list[0].x1, list[0].y1]], ['p2', [list[0].x2, list[0].y2]]];
+  if (list.length !== 1 || list[0].type === 'geo') return [];
+  return Object.entries(handlePos(gbox(list[0])));
+}
+
+/* ───────── Canvas sizing ───────── */
+function resize() {
+  const r = $('#stage').getBoundingClientRect(); dpr = window.devicePixelRatio || 1; W = r.width; H = r.height;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); dirty(); layout();
+}
+window.addEventListener('resize', resize);
+
+/* ───────── Bottom bar layout ───────── */
+const bbar = $('#bbar');
+const barTop = () => bbar.getBoundingClientRect().top;
+function layout() {
+  const h = Math.round(bbar.getBoundingClientRect().height);
+  if (String(h) !== document.documentElement.style.getPropertyValue('--bar-h').replace('px', '')) {
+    document.documentElement.style.setProperty('--bar-h', h + 'px'); resize(); return;
+  }
+  placePop();
+}
+if (window.ResizeObserver) new ResizeObserver(() => layout()).observe(bbar);
+
+/* ───────── Tool selection & popovers ───────── */
+const pop = $('#pop'); let popFor = null;
+const toolBtn = n => document.querySelector(`.tool[data-tool="${n}"],.tool[data-action="${n}"]`);
+function setTool(t) {
+  if (t === 'tools') { if (tool !== 'tools') prevTool = tool; }
+  if (tool === 'tools' && t !== 'tools') geo.cancel();
+  tool = t; document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+  if (!['select', 'tools'].includes(t)) sel.clear();
+  closeEditor(true); geoChanged();
+}
+function updateCursor() {
+  cv.style.cursor = { select: 'default', tools: geo.state.tool ? 'crosshair' : 'default', move: 'grab', pen: 'crosshair', shapes: 'crosshair', text: 'text', eraser: 'none' }[tool] || 'default';
+}
+function openPop(name) { popFor = name; renderPop(); pop.hidden = false; placePop(); document.querySelectorAll('.tool').forEach(b => b.classList.toggle('open', (b.dataset.tool || b.dataset.action) === name && !b.classList.contains('active'))); }
+function closePop() { closePicker(); popFor = null; pop.hidden = true; document.querySelectorAll('.tool.open').forEach(b => b.classList.remove('open')); }
+function placePop() {
+  if (!popFor || pop.hidden) return;
+  const b = toolBtn(popFor).getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  const bt = barTop(); pop.style.maxHeight = Math.max(160, bt - 78) + 'px';
+  const ph2 = Math.min(ph, bt - 78), x = clamp(b.left + b.width / 2 - pw / 2, 6, innerWidth - pw - 6);
+  pop.style.left = x + 'px'; pop.style.top = Math.max(66, bt - ph2 - 12) + 'px';
+}
+const HAS_POP = new Set(['select', 'pen', 'eraser', 'shapes', 'text', 'tools']);
+document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', () => {
+  const t = b.dataset.tool, a = b.dataset.action;
+  if (a === 'clear') { closePop(); askClear(); return; }
+  if (a === 'backdrop') { popFor === 'backdrop' ? closePop() : openPop('backdrop'); return; }
+  if (t === tool) { if (popFor === t) closePop(); else if (HAS_POP.has(t)) openPop(t); return; }   // clicking the active tool again opens its options
+  closePop(); setTool(t);
+}));
+
+const h = (tag, attrs = {}, kids = []) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'on') for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn); else if (k === 'html') e.innerHTML = v; else e.setAttribute(k, v); } kids.forEach(c => e.append(c)); return e; };
+function sec(title, ...kids) { return h('div', { class: 'sec' }, [h('h3', { html: title }), ...kids]); }
+/* ── Figma-style colour picker: saturation/brightness square, hue bar, hex field ── */
+const cp = $('#cp'); let cpS = null;
+const hex2rgb = hx => { hx = hx.replace('#', ''); if (hx.length === 3) hx = hx.split('').map(c => c + c).join(''); const n = parseInt(hx, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const rgb2hex = (r, g, b) => '#' + [r, g, b].map(q => q.toString(16).padStart(2, '0')).join('');
+function rgb2hsv(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b); let hh = 0; if (d) { hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; if (hh < 0) hh += 360; } return [hh, mx ? d / mx : 0, mx]; }
+function hsv2rgb(hh, s, v) { const c = v * s, x = c * (1 - Math.abs((hh / 60) % 2 - 1)), m = v - c; const t = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.min(5, Math.floor(hh / 60))]; return t.map(q => Math.round((q + m) * 255)); }
+cp.innerHTML = '<div class="cp-sv"><i></i></div><div class="cp-hue"><i></i></div><div class="cp-row"><span class="cp-prev"></span><label class="cp-field"><b>#</b><input class="cp-hex" maxlength="6" spellcheck="false" autocomplete="off"></label><button class="cp-eye" title="Pick a colour from the screen" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-3 1-7 7-3 1-1 3-2-2 3-1 1-3 7-7z"/></svg></button></div>';
+const cpSV = $('.cp-sv', cp), cpHue = $('.cp-hue', cp), cpHex = $('.cp-hex', cp), cpPrev = $('.cp-prev', cp), cpEye = $('.cp-eye', cp);
+if (window.EyeDropper) cpEye.hidden = false;
+function cpPaint(skipHex) {
+  const [hh, s2, v] = cpS.hsv, hex = rgb2hex(...hsv2rgb(hh, s2, v));
+  cp.style.setProperty('--h', hh); cpSV.firstChild.style.left = s2 * 100 + '%'; cpSV.firstChild.style.top = (1 - v) * 100 + '%'; cpHue.firstChild.style.left = hh / 360 * 100 + '%';
+  cpSV.firstChild.style.background = hex; cpPrev.style.background = hex; if (!skipHex) cpHex.value = hex.slice(1).toUpperCase();
+  cpS.hex = hex; cpS.cb(hex);
+}
+function drag(el, fn) { el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); const mv = ev => { const r = el.getBoundingClientRect(); fn(clamp((ev.clientX - r.left) / r.width, 0, 1), clamp((ev.clientY - r.top) / r.height, 0, 1)); }; mv(e); el.onpointermove = mv; el.onpointerup = el.onpointercancel = () => { el.onpointermove = null; }; e.preventDefault(); }); }
+drag(cpSV, (x, y) => { cpS.hsv[1] = x; cpS.hsv[2] = 1 - y; cpPaint(); });
+drag(cpHue, x => { cpS.hsv[0] = x * 359.99; cpPaint(); });
+cpHex.addEventListener('input', () => { const v = cpHex.value.replace(/[^0-9a-f]/gi, ''); if (v.length === 6 || v.length === 3) { cpS.hsv = rgb2hsv(...hex2rgb(v)); cpPaint(true); } });
+cpHex.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') closePicker(); });
+cpHex.addEventListener('blur', () => { if (cpS) cpHex.value = cpS.hex.slice(1).toUpperCase(); });
+cpEye.addEventListener('click', async () => { try { const r = await new EyeDropper().open(); cpS.hsv = rgb2hsv(...hex2rgb(r.sRGBHex)); cpPaint(); } catch (e) { } });
+function openPicker(anchor, color, cb, onClose) {
+  closePicker(); const c = /^#[0-9a-f]{3,6}$/i.test(color || '') ? color : '#000455';
+  cpS = { anchor, cb, onClose, hsv: rgb2hsv(...hex2rgb(c)), hex: c }; cp.hidden = false; cp.classList.remove('in'); void cp.offsetWidth; cp.classList.add('in');
+  const old = cpS.cb; cpS.cb = () => { }; cpPaint(); cpS.cb = old;
+  const ar = anchor.getBoundingClientRect(), pw = cp.offsetWidth, ph = cp.offsetHeight;
+  const pr = !pop.hidden && pop.contains(anchor) ? pop.getBoundingClientRect() : ar;     // sit beside the dialog, never on top of it
+  let x = pr.right + 10; if (x + pw > innerWidth - 6) x = pr.left - pw - 10;
+  let y = clamp(ar.top - ph / 2, 66, barTop() - ph - 8);
+  if (x < 6) { x = clamp(ar.left, 6, innerWidth - pw - 6); y = ar.top - ph - 10 >= 66 ? ar.top - ph - 10 : Math.max(66, Math.min(ar.bottom + 10, barTop() - ph - 8)); }
+  cp.style.left = x + 'px'; cp.style.top = y + 'px';
+}
+function closePicker() { if (!cpS) return; const f = cpS.onClose; cpS = null; cp.hidden = true; if (f) f(); }
+document.addEventListener('pointerdown', e => { if (cpS && !cp.contains(e.target) && !cpS.anchor.contains(e.target)) closePicker(); }, true);
+
+function swatches(cur, set, onCustomClose) {
+  const wrap = h('div', { class: 'sw' }), low = (cur || '').toLowerCase(), custom = !COLORS.some(c => c.toLowerCase() === low);
+  COLORS.forEach(c => wrap.append(h('button', { style: `--c:${c}`, class: 'dot' + (c.toLowerCase() === low ? ' on' : ''), title: c, on: { click: () => { closePicker(); set(c); renderPop(); } } })));
+  const b = h('button', { class: 'dot rainbow' + (custom ? ' on' : ''), title: 'Custom colour…' }, [h('i', { style: custom ? `background:${cur}` : '' })]);
+  b.addEventListener('click', () => { if (cpS && cpS.anchor === b) closePicker(); else openPicker(b, cur, c => set(c), onCustomClose || (() => renderPop())); });
+  wrap.append(b); return wrap;
+}
+function slider(min, max, val, set, unit = '') {
+  const out = h('b', { html: val + unit }), pct = v => ((v - min) / (max - min)) * 100 + '%';
+  const r = h('input', { type: 'range', min, max, value: val, style: `--p:${pct(val)}`, on: { input: e => { const v = +e.target.value; e.target.style.setProperty('--p', pct(v)); set(v); out.textContent = v + unit; } } });
+  return h('div', { class: 'row' }, [r, out]);
+}
+const SHAPES = [['rect', 'Rectangle'], ['square', 'Square'], ['circle', 'Circle'], ['ellipse', 'Ellipse'], ['rhombus', 'Rhombus'], ['parallelogram', 'Parallelogram'], ['trapezium', 'Trapezium'], ['itrapezium', 'Isosceles trapezium']];
+const MORE = [['triangle', 'Triangle'], ['rtriangle', 'Right triangle'], ['pentagon', 'Pentagon'], ['hexagon', 'Hexagon'], ['octagon', 'Octagon'], ['star', 'Star'], ['heart', 'Heart'], ['cross', 'Cross']];
+const LINES = [['line', 'Line'], ['dotline', 'Dotted line'], ['arrow', 'Arrow'], ['dotarrow', 'Dotted arrow'], ['darrow', 'Double arrow']];
+function shapeIcon(k) {
+  const st = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"';
+  if (LINES.some(l => l[0] === k)) {
+    const dash = k.startsWith('dot') ? ' stroke-dasharray="0.1 4.2"' : '';
+    return `<svg viewBox="0 0 24 24"><path d="M4 20L20 4"${dash} ${st}/>${k.includes('arrow') ? `<path d="M11 4h9v9" ${st}/>` : ''}${k === 'darrow' ? `<path d="M13 20H4v-9" ${st}/>` : ''}</svg>`;
+  }
+  if (k === 'circle') return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" ${st}/></svg>`;
+  if (k === 'ellipse') return `<svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="6" ${st}/></svg>`;
+  const box = { square: [4, 4, 20, 20], star: [2, 2, 22, 22], hexagon: [3, 3, 21, 21], octagon: [3, 3, 21, 21], pentagon: [3, 3, 21, 21], heart: [3, 4, 21, 21], cross: [4, 4, 20, 20], rtriangle: [4, 4, 20, 20], triangle: [3, 4, 21, 20] }[k] || [3, 5, 21, 19];
+  const pts = shapePoly({ kind: k, x1: box[0], y1: box[1], x2: box[2], y2: box[3] }).pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 24 24"><polygon points="${pts}" ${st}/></svg>`;
+}
+const ICON = {
+  rect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" stroke-dasharray="3 2.4"/></svg>',
+  ellipse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="12" rx="8.5" ry="6.5" stroke-dasharray="3 2.4"/></svg>',
+  lasso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9c0-3 4-5 8-4s7 3 6 6-5 5-9 5c-1 0-2 0-3-.5"/><path d="M7 15c-1.5.5-2 2-1 3s3 1 3-1"/></svg>',
+  touch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-8 7 2 10-6s5-4 8-6"/><circle cx="21" cy="5" r="1.2" fill="currentColor"/></svg>',
+};
+const dashSvg = d => `<svg viewBox="0 0 44 8"><path d="M3 4H41" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" ${d === 'dotted' ? 'stroke-dasharray="0.1 6"' : d === 'dashed' ? 'stroke-dasharray="8 5"' : ''}/></svg>`;
+const chipBtn = (label, on, fn, extra = {}) => h('button', { class: 'chip' + (on ? ' on' : ''), on: { click: fn }, ...extra }, [label]);
+function renderPop() {
+  pop.replaceChildren(); pop.classList.toggle('wide', popFor === 'tools');
+  const head = (t, sub) => pop.append(h('div', { class: 'ph' }, [h('b', { html: t }), sub ? h('span', { html: sub }) : '']));
+  if (popFor === 'select') {
+    head('Select', S.sel.mode === 'lasso' ? 'Free-form selects only what is inside your loop' : 'How dragging on the board selects');
+    const m = S.sel.mode, modes = [['lasso', 'Free-form'], ['rect', 'Rectangle'], ['ellipse', 'Ellipse'], ['touch', 'Touch line']];
+    pop.append(sec('Selection mode', h('div', { class: 'grid2' }, modes.map(([k, n]) => h('button', { class: 'chip tall' + (m === k ? ' on' : ''), on: { click: () => { S.sel.mode = k; renderPop(); } }, html: `${ICON[k]}<span>${n}</span>` })))),
+      sec('Quick actions', h('div', { class: 'chips' }, [
+        chipBtn('Select all', 0, () => { sel = new Set(objs().map(o => o.id)); dirty(); }),
+        chipBtn('Invert', 0, () => { sel = new Set(objs().filter(o => !sel.has(o.id)).map(o => o.id)); dirty(); }),
+        chipBtn('Deselect', 0, () => { sel.clear(); dirty(); })])),
+      h('p', { class: 'hint', html: 'Free-form: draw a loop around objects. Touch line: swipe across the objects you want. Hold <b>Shift</b> while clicking to add to a selection.' }));
+  } else if (popFor === 'pen') {
+    head('Pen', 'Freehand drawing');
+    const s = S.pen, prev = h('div', { class: 'prev' }); const upd = () => { prev.innerHTML = `<svg viewBox="0 0 200 40"><path d="M12 28C40 6 60 6 90 24S150 36 188 12" fill="none" stroke="${s.color}" stroke-width="${s.w}" stroke-linecap="round"/></svg>`; }; upd();
+    pop.append(prev, sec('Colour', swatches(s.color, c => { s.color = c; upd(); }, () => renderPop())), sec('Thickness', slider(1, 30, s.w, v => { s.w = v; upd(); }, 'px')),
+      h('p', { class: 'hint', html: 'Open the ruler or set square (Tools) and start a line next to its edge to draw perfectly straight lines.' }));
+  } else if (popFor === 'eraser') {
+    head('Eraser', 'Rub out parts of drawings');
+    const dot = h('div', { class: 'eprev' }, [h('i', { style: `width:${S.eraser.size}px;height:${S.eraser.size}px` })]);
+    pop.append(dot, sec('Eraser size', slider(8, 100, S.eraser.size, v => { S.eraser.size = v; dot.firstChild.style.width = dot.firstChild.style.height = v + 'px'; dirty(); }, 'px')),
+      h('p', { class: 'hint', html: 'Cuts through pen strokes; shapes, text, images and constructions are removed when touched.' }));
+  } else if (popFor === 'shapes') {
+    head('Shapes', 'Drag on the board to draw');
+    const s = S.shape, grid = list => h('div', { class: 'grid4' }, list.map(([k, n]) => h('button', { class: 'chip icon' + (s.kind === k ? ' on' : ''), title: n, on: { click: () => { s.kind = k; renderPop(); } }, html: shapeIcon(k) })));
+    const more = h('div', { class: 'more' + (s.more ? ' open' : '') }, [grid(MORE)]);
+    const prev = h('div', { class: 'prev small' }); const upd = () => { prev.innerHTML = `<svg viewBox="0 0 200 26"><path d="M12 13H188" fill="none" stroke="${s.color}" stroke-width="${s.w}" stroke-linecap="round" ${s.dash === 'dotted' ? `stroke-dasharray="0.01 ${s.w * 2.6}"` : s.dash === 'dashed' ? `stroke-dasharray="${s.w * 3.5} ${s.w * 2.5}"` : ''}/></svg>`; }; upd();
+    pop.append(sec('Lines', grid(LINES)), sec('Shapes', grid(SHAPES),
+      h('button', { class: 'morebtn', on: { click: () => { s.more = !s.more; more.classList.toggle('open', s.more); b2.textContent = s.more ? 'Fewer shapes' : 'More shapes'; } } }, []), more),
+      sec('Outline', h('div', { class: 'chips' }, [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']].map(([k, n]) => h('button', { class: 'chip dash' + (s.dash === k ? ' on' : ''), title: n, on: { click: () => { s.dash = k; renderPop(); } }, html: dashSvg(k) })))),
+      sec('Colour', swatches(s.color, c => { s.color = c; upd(); })), sec('Thickness', slider(1, 20, s.w, v => { s.w = v; upd(); }, 'px')), prev);
+    var b2 = pop.querySelector('.morebtn'); b2.textContent = s.more ? 'Fewer shapes' : 'More shapes';
+  } else if (popFor === 'text') {
+    head('Text', 'Click the board to type');
+    const s = S.text, prev = h('div', { class: 'prev tx' }); const upd = () => { prev.textContent = 'Aa Bb 123'; prev.style.cssText = `font-family:${FONTS[s.font]};color:${s.color};font-size:${Math.min(44, s.size)}px`; }; upd();
+    pop.append(prev, sec('Font', h('div', { class: 'chips' }, [['sans', 'Sans'], ['serif', 'Serif'], ['mono', 'Mono'], ['hand', 'Hand']].map(([k, n]) => h('button', { class: 'chip' + (s.font === k ? ' on' : ''), style: `font-family:${FONTS[k]}`, on: { click: () => { s.font = k; renderPop(); } } }, [n])))),
+      sec('Colour', swatches(s.color, c => { s.color = c; upd(); })), sec('Size', slider(10, 120, s.size, v => { s.size = v; upd(); }, 'px')),
+      h('p', { class: 'hint', html: 'Double-click existing text with the Select tool to edit it.' }));
+  } else if (popFor === 'tools') {
+    head('Geometry tools', 'Constructions work like GeoGebra');
+    const on = k => B().inst.some(i => i.k === k);
+    const toggle = k => { if (on(k)) B().inst = B().inst.filter(i => i.k !== k); else { const c = toW(W / 2, H / 2), n = B().inst.length * 50; B().inst.push({ id: uid(), k, x: c.x + n, y: c.y + n, a: 0, r: 150 }); } renderPop(); dirty(); };
+    pop.append(sec('Instruments', h('div', { class: 'grid2' }, [['ruler', 'Ruler'], ['square', 'Set square'], ['protractor', 'Protractor'], ['compass', 'Compass']].map(([k, n]) => chipBtn(n, on(k), () => toggle(k))))));
+    for (const cat of geo.CATS) {
+      const items = geo.TOOLS.filter(t => t.cat === cat).map(t => chipBtn(t.label, geo.state.tool === t.id, () => { geo.setTool(t.id); closePop(); }));
+      if (cat === 'General') items.unshift(chipBtn('Move / select', !geo.state.tool, () => { geo.setTool(null); closePop(); }));
+      pop.append(sec(cat, h('div', { class: 'grid2 tl' }, items)));
+    }
+    pop.append(h('p', { class: 'hint', html: 'Pick a tool, then click on the board. <b>Esc</b> cancels. Drag points with <i>Move / select</i> and everything built on them follows.' }));
+  } else if (popFor === 'backdrop') {
+    head('Backdrop', 'Background of this board');
+    const bg = B().bg, set = patch => action(() => Object.assign(B().bg, patch)), bgs = ['#ffffff', '#fff8e1', '#f2f2f2', '#e8f1ff', '#e8f5e9', '#1f3d2b', '#111111', '#000455'];
+    const w = h('div', { class: 'sw' }), custom = !bgs.includes(bg.color.toLowerCase());
+    bgs.forEach(c => w.append(h('button', { style: `--c:${c}`, class: 'dot' + (bg.color.toLowerCase() === c ? ' on' : ''), title: c, on: { click: () => { closePicker(); set({ color: c }); renderPop(); } } })));
+    const rb = h('button', { class: 'dot rainbow' + (custom ? ' on' : ''), title: 'Custom colour…' }, [h('i', { style: custom ? `background:${bg.color}` : '' })]);
+    rb.addEventListener('click', () => {
+      if (cpS && cpS.anchor === rb) return closePicker(); const before = snap();
+      openPicker(rb, bg.color, c => { B().bg.color = c; dirty(); save(); }, () => { if (JSON.stringify(before.bg) !== JSON.stringify(B().bg)) pushUndo(before); renderPop(); });
+    });
+    w.append(rb);
+    pop.append(sec('Pattern', h('div', { class: 'grid3' }, [['none', 'Plain'], ['grid', 'Grid'], ['dots', 'Dots'], ['lines', 'Lines'], ['graph', 'Graph']].map(([k, n]) => chipBtn(n, bg.type === k, () => { set({ type: k }); renderPop(); })))),
+      sec('Colour', w),
+      sec('Image', h('div', { class: 'chips' }, [chipBtn('Upload…', 0, () => pickImage('backdrop')), bg.type === 'image' ? chipBtn('Remove', 0, () => { set({ type: 'none', img: null }); renderPop(); }) : ''])));
+  }
+}
+document.addEventListener('pointerdown', e => { if (popFor && !pop.contains(e.target) && !cp.contains(e.target) && !e.target.closest('.tool') && !e.target.closest('#bbar')) closePop(); }, true);
+
+/* ───────── Images ───────── */
+const fileImg = $('#fileImg'); let imgMode = 'object';
+function pickImage(mode) { imgMode = mode; fileImg.value = ''; fileImg.click(); }
+fileImg.addEventListener('change', () => { if (fileImg.files[0]) loadImageFile(fileImg.files[0], imgMode); });
+function loadImageFile(file, mode, at) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const m = 1800, k = Math.min(1, m / Math.max(im.naturalWidth, im.naturalHeight)); let src = fr.result, el = im;
+      if (k < 1) { const c = document.createElement('canvas'); c.width = im.naturalWidth * k; c.height = im.naturalHeight * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); src = c.toDataURL('image/jpeg', .88); el = new Image(); el.src = src; }
+      const id = uid(); imgs.set(id, { src, el });
+      const go = () => {
+        if (mode === 'backdrop') { action(() => { B().bg.type = 'image'; B().bg.img = id; }); if (popFor === 'backdrop') renderPop(); }
+        else {
+          const c = at || toW(W / 2, H / 2), s = Math.min(1, 480 / Math.max(im.naturalWidth, im.naturalHeight)), w = im.naturalWidth * s, hh = im.naturalHeight * s;
+          const o = { id: uid(), type: 'image', img: id, x: c.x - w / 2, y: c.y - hh / 2, w, h: hh };
+          action(() => objs().push(o)); setTool('select'); sel = new Set([o.id]); syncUI();
+        }
+        dirty();
+      };
+      el.complete ? go() : (el.onload = go);
+    };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+window.addEventListener('paste', e => { if (/input|textarea/i.test(e.target.tagName)) return; const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/')); if (f) { loadImageFile(f, 'object'); e.preventDefault(); } else if (clip.length) pasteClip(); });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer?.files?.[0]; if (f) { const r = $('#stage').getBoundingClientRect(); loadImageFile(f, 'object', toW(e.clientX - r.left, e.clientY - r.top)); } });
+
+/* ───────── Text editor overlay ───────── */
+const ted = $('#ted'); let editing = null;       // {obj|null, x, y, isNew}
+function openEditor(o, wx, wy) {
+  closeEditor(true);
+  const base = o || { size: S.text.size, color: S.text.color, font: S.text.font };
+  editing = { o, x: o ? o.x : wx, y: o ? o.y : wy, before: snap() };
+  ted.value = o ? o.text : ''; ted.style.display = 'block'; positionEditor(base); ted.focus(); ted.select();
+  if (o) dirty();
+}
+function positionEditor(base) {
+  const v = view(), b = base || editing.o || { size: S.text.size, color: S.text.color, font: S.text.font };
+  ted.style.left = editing.x * v.z + v.x + 'px'; ted.style.top = editing.y * v.z + v.y + 'px';
+  ted.style.fontSize = b.size * v.z + 'px'; ted.style.fontFamily = FONTS[b.font] || FONTS.sans; ted.style.color = b.color;
+  fitEditor();
+}
+function fitEditor() { ted.style.width = '10px'; ted.style.height = '10px'; ted.style.width = ted.scrollWidth + 6 + 'px'; ted.style.height = ted.scrollHeight + 'px'; }
+ted.addEventListener('input', fitEditor);
+ted.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeEditor(false); else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) closeEditor(false); });
+ted.addEventListener('blur', () => closeEditor(false));
+ted.addEventListener('pointerdown', e => e.stopPropagation());
+function closeEditor(silent) {
+  if (!editing) return; const ed = editing; editing = null; const txt = ted.value; ted.style.display = 'none';
+  if (silent === true && !txt.trim()) return;
+  const b = B();
+  if (ed.o) {
+    const o = b.objs.find(q => q.id === ed.o.id); if (!o) return;
+    if (!txt.trim()) { b.objs = b.objs.filter(q => q !== o); sel.delete(o.id); pushUndo(ed.before); }
+    else if (txt !== o.text) { o.text = txt; measure(o); pushUndo(ed.before); }
+  } else if (txt.trim()) {
+    const o = measure({ id: uid(), type: 'text', x: ed.x, y: ed.y, text: txt, size: S.text.size, color: S.text.color, font: S.text.font });
+    b.objs.push(o); pushUndo(ed.before);
+  }
+  dirty();
+}
+
+/* ───────── Pointer interaction ───────── */
+const pts = new Map(); let pinch = null, spaceDown = false, space0 = null;
+const pos = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+function ensureNotEditing() { if (editing) closeEditor(false); }
+
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); const s = pos(e); pts.set(e.pointerId, s);
+  if (popFor) closePop(); closePicker();
+  if (pts.size === 2) { cancelDrag(); const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, z: view().z, v: { ...view() } }; return; }
+  if (pts.size > 2) return;
+  ensureNotEditing();
+  const z = view().z, p = toW(s.x, s.y); let t = tool === 'tools' ? (geo.state.tool ? 'geo' : 'select') : tool;
+  if (e.button === 1 || spaceDown) { drawing = { t: 'pan', sx: s.x, sy: s.y, vx: view().x, vy: view().y }; cv.style.cursor = 'grabbing'; return; }
+  if (e.button !== 0 && e.pointerType === 'mouse') return;
+  // instruments take priority for select / pen (pen only away from their edges)
+  if (t === 'select' || t === 'pen' || t === 'geo') {
+    let hitI = instAt(p, z, false);
+    if (t === 'geo' && hitI && hitI.part === 'body') hitI = null;
+    if (hitI && hitI.part === 'body' && t === 'pen' && snapEdge(p, z)) hitI = null;   // near an edge: draw, don't drag
+    if (hitI) {
+      const i = hitI.i, list = B().inst; list.push(list.splice(list.indexOf(i), 1)[0]);
+      if (hitI.part === 'close') { B().inst = list.filter(q => q !== i); if (popFor === 'tools') renderPop(); dirty(); return; }
+      if (hitI.part === 'tip') {
+        const th = Math.atan2(p.y - i.y, p.x - i.x);
+        if (t === 'pen') { const g = compassGeom(i), o = { id: uid(), type: 'stroke', pts: [i.x + g.r * Math.cos(th), i.y + g.r * Math.sin(th)], color: S.pen.color, w: S.pen.w, hl: false }; i.a = th; drawing = { t: 'cdraw', i, o, before: snap(), th }; objs().push(o); }
+        else drawing = { t: 'ctip', i };
+      } else drawing = hitI.part === 'rot' ? { t: 'irot', i, off: Math.atan2(INST[i.k].handle[1], INST[i.k].handle[0]) } : { t: 'imove', i, dx: p.x - i.x, dy: p.y - i.y };
+      dirty(); return;
+    }
+  }
+  if (t === 'geo') { geo.click(p, z); dirty(); return; }
+  if (t === 'move') { drawing = { t: 'pan', sx: s.x, sy: s.y, vx: view().x, vy: view().y }; cv.style.cursor = 'grabbing'; return; }
+  if (t === 'pen') {
+    const sn = snapEdge(p, z), p0 = sn ? projEdge(sn, p) : p;
+    const o = { id: uid(), type: 'stroke', pts: [p0.x, p0.y], color: S.pen.color, w: S.pen.w, hl: S.pen.hl };
+    drawing = { t: 'draw', o, before: snap(), sn }; objs().push(o); dirty(); return;
+  }
+  if (t === 'eraser') { drawing = { t: 'erase', before: snap(), last: p, changed: false }; eraseAt(p); return; }
+  if (t === 'shapes') {
+    let kind = S.shape.kind, dash = S.shape.dash;
+    if (kind === 'dotline') { kind = 'line'; dash = 'dotted'; } else if (kind === 'dotarrow') { kind = 'arrow'; dash = 'dotted'; }
+    const o = { id: uid(), type: 'shape', kind, x1: p.x, y1: p.y, x2: p.x, y2: p.y, color: S.shape.color, w: S.shape.w, dash };
+    drawing = { t: 'shape', o, before: snap() }; objs().push(o); dirty(); return;
+  }
+  if (t === 'text') {
+    const th = [...objs()].reverse().find(o => o.type === 'text' && hit(o, p, 4 / z));
+    th ? openEditor(th) : openEditor(null, p.x, p.y); e.preventDefault(); return;
+  }
+  // select tool
+  const list = selObjs();
+  if (list.length) {                          // handles of current selection
+    for (const [name, hp] of selHandles(list)) { const sp = toS(hp[0], hp[1]); if (Math.abs(sp.x - s.x) <= 8 && Math.abs(sp.y - s.y) <= 8) { drawing = { t: 'resize', name, o: list[0], o0: structuredClone(list[0]), before: snap(), shift: e.shiftKey }; return; } }
+  }
+  const all = [...objs()].reverse(), top = all.find(o => geo.isPoint(o) && hit(o, p, 6 / z)) || all.find(o => hit(o, p, 6 / z));
+  if (top) {
+    if (e.shiftKey) { sel.has(top.id) ? sel.delete(top.id) : sel.add(top.id); }
+    else if (!sel.has(top.id)) sel = new Set([top.id]);
+    if (sel.has(top.id)) drawing = { t: 'move', last: p, before: snap(), moved: false, id: top.id, dbl: e.detail === 2 };
+    syncUI(); dirty(); return;
+  }
+  if (!e.shiftKey) sel.clear();
+  marquee = { mode: S.sel.mode, x1: p.x, y1: p.y, x2: p.x, y2: p.y, pts: [[p.x, p.y]], base: new Set(sel) }; drawing = { t: 'marquee' }; syncUI(); dirty();
+});
+
+cv.addEventListener('pointermove', e => {
+  const s = pos(e); hover = s; if (tool === 'eraser' || (tool === 'tools' && geo.state.tool)) dirty();
+  if (pts.has(e.pointerId)) pts.set(e.pointerId, s);
+  if (pinch && pts.size >= 2) {
+    const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, v = view();
+    const nz = clamp(pinch.z * d / pinch.d, MIN_Z, MAX_Z), wx = (pinch.cx - pinch.v.x) / pinch.v.z, wy = (pinch.cy - pinch.v.y) / pinch.v.z;
+    v.z = nz; v.x = cx - wx * nz; v.y = cy - wy * nz; syncZoom(); dirty(); return;
+  }
+  if (!drawing) return;
+  const z = view().z, d = drawing;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; const list = evs.length ? evs : [e];
+  if (d.t === 'pan') { const v = view(); v.x = d.vx + s.x - d.sx; v.y = d.vy + s.y - d.sy; dirty(); return; }
+  if (d.t === 'draw') {
+    for (const ev of list) {
+      const q = toW(ev.clientX - cv.getBoundingClientRect().left, ev.clientY - cv.getBoundingClientRect().top), P = d.o.pts;
+      if (d.sn) { const a = projEdge(d.sn, q); P[2] = a.x; P[3] = a.y; P.length = 4; }
+      else { const lx = P[P.length - 2], ly = P[P.length - 1]; if (Math.hypot(q.x - lx, q.y - ly) * z > 1.2) P.push(q.x, q.y); }
+    }
+    dirty(); return;
+  }
+  const p = toW(s.x, s.y);
+  if (d.t === 'erase') {
+    const dist = Math.hypot(p.x - d.last.x, p.y - d.last.y), step = Math.max(1, S.eraser.size / 3 / z), n = Math.ceil(dist / step);
+    for (let i = 1; i <= n; i++) eraseAt({ x: d.last.x + (p.x - d.last.x) * i / n, y: d.last.y + (p.y - d.last.y) * i / n });
+    d.last = p; return;
+  }
+  if (d.t === 'shape') {
+    const o = d.o; let x = p.x, y = p.y;
+    if (e.shiftKey || o.kind === 'square' || o.kind === 'circle') {
+      if (OPEN.has(o.kind)) { if (e.shiftKey) { const a = Math.round(Math.atan2(y - o.y1, x - o.x1) / (Math.PI / 4)) * Math.PI / 4, l = Math.hypot(x - o.x1, y - o.y1); x = o.x1 + Math.cos(a) * l; y = o.y1 + Math.sin(a) * l; } }
+      else { const m = Math.max(Math.abs(x - o.x1), Math.abs(y - o.y1)); x = o.x1 + Math.sign(x - o.x1 || 1) * m; y = o.y1 + Math.sign(y - o.y1 || 1) * m; }
+    }
+    o.x2 = x; o.y2 = y; dirty(); return;
+  }
+  if (d.t === 'ctip') { d.i.r = clamp(Math.hypot(p.x - d.i.x, p.y - d.i.y), 20, CL * 2 - 30); d.i.a = Math.atan2(p.y - d.i.y, p.x - d.i.x); dirty(); return; }
+  if (d.t === 'cdraw') {
+    const i = d.i, g = compassGeom(i), th = Math.atan2(p.y - i.y, p.x - i.x); let dl = th - d.th;
+    while (dl > Math.PI) dl -= 2 * Math.PI; while (dl < -Math.PI) dl += 2 * Math.PI;
+    const n = Math.max(1, Math.ceil(Math.abs(dl) / .05)); for (let k = 1; k <= n; k++) { const a = d.th + dl * k / n; d.o.pts.push(i.x + g.r * Math.cos(a), i.y + g.r * Math.sin(a)); }
+    d.th = th; i.a = th; dirty(); return;
+  }
+  if (d.t === 'imove') { d.i.x = p.x - d.dx; d.i.y = p.y - d.dy; dirty(); return; }
+  if (d.t === 'irot') { d.i.a = Math.atan2(p.y - d.i.y, p.x - d.i.x) - d.off; if (e.shiftKey) d.i.a = Math.round(d.i.a / (Math.PI / 12)) * Math.PI / 12; dirty(); return; }
+  if (d.t === 'move') {
+    const dx = p.x - d.last.x, dy = p.y - d.last.y; if (!d.moved && Math.hypot(s.x - pts.get(e.pointerId).x, 0) >= 0) d.moved = true;
+    geo.moveMany(selObjs(), dx, dy, moveObj, p); d.last = p; d.moved = true; dirty(); return;
+  }
+  if (d.t === 'marquee') { marqueeMove(p); return; }
+  if (d.t === 'resize') resizeDrag(d, p, e.shiftKey);
+});
+
+function samples(o) {
+  if (o.type === 'stroke') { const r = []; for (let i = 0; i < o.pts.length; i += 2) r.push([o.pts[i], o.pts[i + 1]]); return r; }
+  const g = gbox(o), r = []; for (const fx of [0, .5, 1]) for (const fy of [0, .5, 1]) r.push([g.x + g.w * fx, g.y + g.h * fy]); return r;
+}
+/* Free-form: a pen stroke that crosses the loop is cut at the boundary; only the part inside is selected. */
+function lassoSplit(poly) {
+  if (poly.length < 3) return;
+  const z = view().z, before = snap(), step = 3 / z, out = [], nsel = new Set(sel); let changed = false;
+  for (const o of B().objs) {
+    if (o.type !== 'stroke' || sel.has(o.id) || o.pts.length < 4) { out.push(o); continue; }
+    const P = []; for (let i = 0; i < o.pts.length; i += 2) {
+      const x = o.pts[i], y = o.pts[i + 1];
+      if (i) { const px = P[P.length - 1][0], py = P[P.length - 1][1], n = Math.min(400, Math.floor(Math.hypot(x - px, y - py) / step)); for (let k = 1; k <= n; k++) P.push([px + (x - px) * k / (n + 1), py + (y - py) * k / (n + 1)]); }
+      P.push([x, y]);
+    }
+    const ins = P.map(q => inPoly({ x: q[0], y: q[1] }, poly));
+    if (!ins.some(Boolean) || ins.every(Boolean)) { out.push(o); continue; }
+    changed = true; let run = [P[0]], cin = ins[0];
+    const flush = () => { if (!run.length) return; if (run.length < 2) run.push(run[0]); const n = { ...structuredClone(o), id: uid(), pts: run.flat() }; out.push(n); if (cin) nsel.add(n.id); };
+    for (let i = 1; i < P.length; i++) { if (ins[i] !== cin) { run.push(P[i]); flush(); run = [P[i]]; cin = ins[i]; } else run.push(P[i]); }
+    flush();
+  }
+  if (changed) { B().objs = out; sel = nsel; pushUndo(before); }
+}
+function marqueeMove(p) {
+  const m = marquee, z = view().z; m.x2 = p.x; m.y2 = p.y; m.pts.push([p.x, p.y]);
+  const skip = o => o.type === 'geo' && o.hidden && !geo.state.ghost;
+  if (m.mode === 'touch') { for (const o of objs()) if (!skip(o) && hit(o, p, 6 / z)) sel.add(o.id); dirty(); return; }
+  sel = new Set(m.base);
+  const bx = { x: Math.min(m.x1, p.x), y: Math.min(m.y1, p.y), w: Math.abs(p.x - m.x1), h: Math.abs(p.y - m.y1) };
+  const cx = (m.x1 + p.x) / 2, cy = (m.y1 + p.y) / 2, rx = bx.w / 2 || 1e-6, ry = bx.h / 2 || 1e-6;
+  for (const o of objs()) {
+    if (skip(o)) continue; let ok = false;
+    if (m.mode === 'rect') { const g = gbox(o); ok = g.x <= bx.x + bx.w && g.x + g.w >= bx.x && g.y <= bx.y + bx.h && g.y + g.h >= bx.y; }
+    else if (m.mode === 'ellipse') ok = samples(o).some(q => ((q[0] - cx) / rx) ** 2 + ((q[1] - cy) / ry) ** 2 <= 1);
+    else ok = m.pts.length > 2 && samples(o).every(q => inPoly({ x: q[0], y: q[1] }, m.pts));   // strictly inside the loop
+    if (ok) sel.add(o.id);
+  }
+  dirty();
+}
+function resizeDrag(d, p, shift) {
+  const o = d.o, o0 = d.o0;
+  if (d.name === 'p1' || d.name === 'p2') {
+    let x = p.x, y = p.y; const ox = d.name === 'p1' ? o0.x2 : o0.x1, oy = d.name === 'p1' ? o0.y2 : o0.y1;
+    if (shift) { const a = Math.round(Math.atan2(y - oy, x - ox) / (Math.PI / 4)) * Math.PI / 4, l = Math.hypot(x - ox, y - oy); x = ox + Math.cos(a) * l; y = oy + Math.sin(a) * l; }
+    if (d.name === 'p1') { o.x1 = x; o.y1 = y; } else { o.x2 = x; o.y2 = y; }
+    dirty(); return;
+  }
+  const b = gbox(o0), n = d.name, min = 6 / view().z;
+  let x1 = b.x, y1 = b.y, x2 = b.x + b.w, y2 = b.y + b.h;
+  if (n.includes('w')) x1 = Math.min(p.x, x2 - min); if (n.includes('e')) x2 = Math.max(p.x, x1 + min);
+  if (n.includes('n')) y1 = Math.min(p.y, y2 - min); if (n.includes('s')) y2 = Math.max(p.y, y1 + min);
+  let w = x2 - x1, hh = y2 - y1;
+  const sq = o.type === 'shape' && (o.kind === 'square' || o.kind === 'circle'), keep = shift || sq || o.type === 'image' || o.type === 'text';
+  if (keep && b.w && b.h && n.length === 2) {
+    const k = Math.max(w / b.w, hh / b.h); w = b.w * k; hh = b.h * k;
+    if (n.includes('w')) x1 = x2 - w; else x2 = x1 + w; if (n.includes('n')) y1 = y2 - hh; else y2 = y1 + hh;
+  } else if (sq || o.type === 'text' || (o.type === 'image' && b.w && b.h)) {
+    if (n === 'e' || n === 'w') { const k = w / b.w; hh = b.h * k; y2 = y1 + hh; } else { const k = hh / b.h; w = b.w * k; x2 = x1 + w; }
+  }
+  fitObj(o0, o, { x: x1, y: y1, w: x2 - x1, h: y2 - y1 }); dirty();
+}
+
+function cancelDrag() {
+  if (drawing && (drawing.t === 'draw' || drawing.t === 'cdraw' || drawing.t === 'shape')) B().objs = B().objs.filter(o => o !== drawing.o);
+  if (drawing && drawing.before && ['move', 'resize', 'erase'].includes(drawing.t)) restoreQuiet(drawing.before);
+  drawing = null; marquee = null; dirty();
+}
+function restoreQuiet(s) { const b = B(); b.objs = s.objs; b.bg = s.bg; }
+
+function endPointer(e) {
+  pts.delete(e.pointerId);
+  if (pinch) { if (pts.size < 2) { pinch = null; save(); } return; }
+  const d = drawing; if (!d) return; drawing = null; updateCursor();
+  const s = pos(e);
+  if (d.t === 'pan') { save(); }
+  else if (d.t === 'draw' || d.t === 'cdraw') { pushUndo(d.before); }
+  else if (d.t === 'shape') {
+    const o = d.o, g = shapeBox(o), min = 3 / view().z;
+    if (g.w < min && g.h < min) { B().objs = B().objs.filter(q => q !== o); }
+    else { pushUndo(d.before); setTool('select'); sel = new Set([o.id]); syncUI(); }
+  }
+  else if (d.t === 'erase') { if (d.changed) pushUndo(d.before); }
+  else if (d.t === 'move') {
+    if (d.moved && d.before && JSON.stringify(d.before.objs) !== JSON.stringify(B().objs.map(o => o))) pushUndo(d.before);
+    else if (!d.moved && d.dbl) { const o = objs().find(q => q.id === d.id); if (o?.type === 'text') openEditor(o); }
+    syncUI();
+  }
+  else if (d.t === 'resize') { pushUndo(d.before); }
+  else if (d.t === 'marquee') { if (marquee && marquee.mode === 'lasso') lassoSplit(marquee.pts); marquee = null; syncUI(); }
+  else if (d.t === 'imove' || d.t === 'irot' || d.t === 'ctip') save();
+  void s; dirty();
+}
+cv.addEventListener('pointerup', endPointer); cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', () => { hover = null; if (tool === 'eraser' || (tool === 'tools' && geo.state.tool)) dirty(); });
+cv.addEventListener('dblclick', e => {
+  if (tool === 'tools' && geo.state.tool) { geo.dblclick(); dirty(); return; }
+  if (tool !== 'select' && tool !== 'tools') return; const s = pos(e), p = toW(s.x, s.y);
+  const t = [...objs()].reverse().find(o => o.type === 'text' && hit(o, p, 4 / view().z)); if (t) openEditor(t);
+});
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+/* Wheel: scroll pans, Ctrl/pinch zooms */
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); const s = pos(e), v = view();
+  if (e.ctrlKey || e.metaKey) zoomAt(v.z * Math.exp(-e.deltaY * (e.deltaMode ? .05 : .01)), s.x, s.y);
+  else if (e.shiftKey && !e.deltaX) { v.x -= e.deltaY; dirty(); } else { v.x -= e.deltaX; v.y -= e.deltaY; dirty(); }
+  if (editing) positionEditor(); save();
+}, { passive: false });
+
+/* ───────── Eraser ───────── */
+function eraseAt(p) {
+  const z = view().z, r = S.eraser.size / 2 / z, b = B(); let changed = false, out = []; const dead = new Set();
+  for (const o of b.objs) {
+    if (o.type === 'stroke') {
+      const g = gbox(o), pad = r + o.w * (o.hl ? 1.5 : .5);
+      if (p.x < g.x - pad || p.x > g.x + g.w + pad || p.y < g.y - pad || p.y > g.y + g.h + pad) { out.push(o); continue; }
+      const parts = eraseStroke(o, p, r); if (parts === null) out.push(o); else { changed = true; out.push(...parts); }
+    } else if (o.type === 'geo') { if (hit(o, p, r)) { dead.add(o.id); changed = true; } else out.push(o); }
+    else if (hit(o, p, r)) { changed = true; sel.delete(o.id); } else out.push(o);
+  }
+  if (dead.size) { const all = geo.withDependents(dead); out = out.filter(o => !all.has(o.id)); }
+  if (changed) { b.objs = out; if (drawing) drawing.changed = true; syncUI(); dirty(); }
+}
+function eraseStroke(o, p, r) {
+  const P = o.pts, reach = r + o.w * (o.hl ? 1.5 : .5); let touched = false;
+  if (P.length === 2) return Math.hypot(P[0] - p.x, P[1] - p.y) <= reach ? [] : null;
+  for (let i = 0; i < P.length - 2; i += 2) if (segDist(p.x, p.y, P[i], P[i + 1], P[i + 2], P[i + 3]) <= reach) { touched = true; break; }
+  if (!touched) return null;
+  const D = [[P[0], P[1]]], step = Math.max(.5, r / 3);
+  for (let i = 0; i < P.length - 2; i += 2) {
+    const ax = P[i], ay = P[i + 1], bx = P[i + 2], by = P[i + 3], n = Math.ceil(Math.hypot(bx - ax, by - ay) / step);
+    for (let k = 1; k <= n; k++) D.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n]);
+  }
+  const res = []; let curr = [];
+  const flush = () => { if (curr.length) { const f = curr.flat(); res.push({ ...o, id: uid(), pts: f.length === 2 ? f : f }); curr = []; } };
+  for (const q of D) { if (Math.hypot(q[0] - p.x, q[1] - p.y) <= r) flush(); else curr.push(q); }
+  flush();
+  return res.filter(s => s.pts.length >= 2);
+}
+
+/* ───────── Selection bar, clipboard, delete ───────── */
+const selbar = $('#selbar');
+function placeSelBar() {
+  const list = selObjs();
+  if (!list.length || !selectLike() || (drawing && drawing.t !== 'marquee') || editing) { selbar.hidden = true; return; }
+  const ub = unionBox(list), a = toS(ub.x, ub.y), b = toS(ub.x + ub.w, ub.y + ub.h); selbar.hidden = false;
+  const w = selbar.offsetWidth, hh = selbar.offsetHeight;
+  selbar.style.left = clamp((a.x + b.x) / 2 - w / 2, 4, W - w - 4) + 'px';
+  selbar.style.top = clamp(a.y - hh - 14, 4, H - hh - 4) + 'px';
+  const f = list.find(o => o.type !== 'image'); $('#selColor').style.display = f ? '' : 'none';
+  if (f) $('#selColor span').style.background = f.color || '#0b3d91';
+}
+$('#selColor').addEventListener('click', e => {
+  const btn = e.currentTarget, f = selObjs().find(o => o.type !== 'image'); if (!f) return;
+  if (cpS && cpS.anchor === btn) closePicker(); else openPicker(btn, f.color || '#0b3d91', c => recolor(c));
+});
+let recolorBefore = null;
+function recolor(c) {
+  if (!recolorBefore) recolorBefore = snap();
+  selObjs().forEach(o => { if (o.type !== 'image') o.color = c; });
+  dirty(); clearTimeout(recolor.t); recolor.t = setTimeout(() => { pushUndo(recolorBefore); recolorBefore = null; }, 500);
+}
+$('#selDel').addEventListener('click', delSel); $('#selDup').addEventListener('click', dupSel);
+function delSel() { if (!sel.size) return; action(() => { const ids = geo.withDependents([...sel]); B().objs = objs().filter(o => !ids.has(o.id)); sel.clear(); }); syncUI(); }
+function copySel() { clip = structuredClone(selObjs().filter(o => o.type !== 'geo')); }
+function pasteClip(off = 24) {
+  if (!clip.length) return; const c = structuredClone(clip).map(o => { o.id = uid(); moveObj(o, off, off); return o; });
+  action(() => objs().push(...c)); clip = structuredClone(c); setTool('select'); sel = new Set(c.map(o => o.id)); syncUI();
+}
+function dupSel() { if (sel.size) { copySel(); pasteClip(); } }
+
+/* ───────── Zoom ───────── */
+const zr = $('#zoomRange');
+const z2p = z => z <= 1 ? (z - MIN_Z) / (1 - MIN_Z) * .38 : .38 + (z - 1) / (MAX_Z - 1) * .62;
+const p2z = p => p <= .38 ? MIN_Z + (p / .38) * (1 - MIN_Z) : 1 + (p - .38) / .62 * (MAX_Z - 1);
+function zoomAt(nz, sx, sy) {
+  const v = view(); nz = clamp(nz, MIN_Z, MAX_Z); const wx = (sx - v.x) / v.z, wy = (sy - v.y) / v.z;
+  v.z = nz; v.x = sx - wx * nz; v.y = sy - wy * nz; syncZoom(); dirty();
+}
+function syncZoom() { const p = z2p(view().z); zr.value = Math.round(p * 1000); zr.style.setProperty('--p', p * 100 + '%'); $('#zoomPct').textContent = Math.round(view().z * 100) + '%'; toast(Math.round(view().z * 100) + '%'); }
+zr.addEventListener('input', () => zoomAt(p2z(zr.value / 1000), W / 2, H / 2));
+$('#zoomPct').addEventListener('click', () => zoomAt(1, W / 2, H / 2));
+$('#zoomInBtn').addEventListener('click', () => zoomAt(view().z * 1.25, W / 2, H / 2));
+$('#zoomOutBtn').addEventListener('click', () => zoomAt(view().z / 1.25, W / 2, H / 2));
+let toastT; function toast(msg, ms = 900) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms); }
+
+/* ───────── Boards ───────── */
+const pageNum = $('#pageNum');
+function goBoard(i) {
+  geo.cancel(); i = clamp(i, 0, boards.length - 1); closeEditor(true); cancelDrag(); cur = i; sel.clear(); pageSync(); syncZoom(); toast('Board ' + (i + 1) + ' of ' + boards.length); syncUI(); dirty(); save();
+}
+function pageSync() { $('#delBtn').disabled = boards.length < 2; pageNum.value = cur + 1; $('#pageOf').textContent = 'of ' + boards.length; $('#prevBtn').disabled = cur === 0; $('#nextBtn').disabled = cur === boards.length - 1; if (popFor === 'backdrop' || popFor === 'tools') renderPop(); }
+$('#prevBtn').addEventListener('click', () => goBoard(cur - 1));
+$('#nextBtn').addEventListener('click', () => goBoard(cur + 1));
+$('#delBtn').addEventListener('click', () => { if (boards.length < 2) return; modal('Delete board ' + (cur + 1) + ' of ' + boards.length + '? This cannot be undone.', [['Cancel'], ['Delete board', () => { boards.splice(cur, 1); goBoard(Math.min(cur, boards.length - 1)); }, true]]); });
+$('#addBtn').addEventListener('click', () => { boards.splice(cur + 1, 0, newBoard()); goBoard(cur + 1); });
+pageNum.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const n = parseInt(pageNum.value, 10); goBoard(isNaN(n) ? cur : n - 1); pageNum.blur(); } if (e.key === 'Escape') { pageSync(); pageNum.blur(); } });
+pageNum.addEventListener('blur', () => { const n = parseInt(pageNum.value, 10); if (!isNaN(n) && n - 1 !== cur) goBoard(n - 1); else pageSync(); });
+pageNum.addEventListener('focus', () => pageNum.select());
+$('#undoBtn').addEventListener('click', undo); $('#redoBtn').addEventListener('click', redo);
+function syncUI() { $('#undoBtn').disabled = !B().undo.length; $('#redoBtn').disabled = !B().redo.length; }
+
+/* ───────── Modal / clear ───────── */
+function modal(msg, buttons) {
+  $('#modalMsg').textContent = msg; const row = $('#modalBtns'); row.replaceChildren();
+  buttons.forEach(([label, fn, primary]) => row.append(h('button', { class: primary ? 'primary' : '', on: { click: () => { $('#modal').hidden = true; fn && fn(); } } }, [label])));
+  $('#modal').hidden = false; row.lastChild.focus();
+}
+function askClear() {
+  const btns = [['Cancel'], ];
+  if (boards.length > 1) btns.push(['Delete board', () => { boards.splice(cur, 1); goBoard(Math.min(cur, boards.length - 1)); }]);
+  btns.push(['Clear board', () => { action(() => { B().objs = []; sel.clear(); }); }, true]);
+  modal('Clear everything on this board?', btns);
+}
+let onModalCancel = null;
+const closeModal = () => { $('#modal').hidden = true; if (onModalCancel) { const f = onModalCancel; onModalCancel = null; f(); } };
+$('#modal').addEventListener('pointerdown', e => { if (e.target.id === 'modal') closeModal(); });
+function askNumber(spec, cb) {
+  $('#modalMsg').textContent = spec.msg; const row = $('#modalBtns'); row.replaceChildren();
+  const inp = h('input', { type: 'number', value: spec.def, step: spec.int ? 1 : 'any', class: 'num' });
+  const ok = () => { let v = parseFloat(inp.value); if (isNaN(v)) return; if (spec.int) v = Math.round(v); if (spec.min != null && v < spec.min) v = spec.min; onModalCancel = null; $('#modal').hidden = true; cb(v); };
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') ok(); if (e.key === 'Escape') closeModal(); });
+  row.append(inp, h('button', { on: { click: closeModal } }, ['Cancel']), h('button', { class: 'primary', on: { click: ok } }, ['OK']));
+  onModalCancel = () => cb(null); $('#modal').hidden = false; inp.focus(); inp.select();
+}
+function geoChanged() {
+  const hint = $('#hint'), on = tool === 'tools' && geo.state.tool; hint.hidden = !on; if (on) hint.textContent = geo.hintText();
+  updateCursor(); dirty();
+}
+
+/* ───────── Sidebar ───────── */
+const sidebar = $('#sidebar'), scrim = $('#scrim');
+function toggleSidebar(open) { open = open ?? !sidebar.classList.contains('open'); sidebar.classList.toggle('open', open); scrim.hidden = !open; }
+$('#sidebarBtn').addEventListener('click', () => toggleSidebar()); scrim.addEventListener('click', () => toggleSidebar(false));
+sidebar.querySelector('.disabled').addEventListener('click', e => { e.preventDefault(); toast('Graph calculator is coming soon', 1600); });
+$('#exportPng').addEventListener('click', () => { exportPng(); toggleSidebar(false); });
+$('#saveJson').addEventListener('click', () => { download(new Blob([JSON.stringify(serialize())], { type: 'application/json' }), 'board.json'); toggleSidebar(false); });
+$('#openJson').addEventListener('click', () => $('#fileJson').click());
+$('#fileJson').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { load(JSON.parse(t)); toggleSidebar(false); toast('Board file opened'); } catch (er) { toast('Not a valid board file', 1800); } }); e.target.value = ''; });
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }
+function exportPng() {
+  const b = B(), box = unionBox(b.objs) || { x: 0, y: 0, w: W, h: H }, pad = 40, k = 2;
+  const c = document.createElement('canvas'); c.width = (box.w + pad * 2) * k; c.height = (box.h + pad * 2) * k; const x = c.getContext('2d');
+  const v = { x: -box.x + pad, y: -box.y + pad, z: 1 };
+  x.setTransform(k, 0, 0, k, 0, 0); drawBackdrop(x, v, box.w + pad * 2, box.h + pad * 2, b.bg);
+  x.setTransform(k, 0, 0, k, v.x * k, v.y * k); b.objs.forEach(o => drawObj(x, o, 1));
+  c.toBlob(bl => download(bl, 'whiteboard.png'));
+}
+
+/* ───────── Persistence ───────── */
+function serialize() {
+  const used = new Set(); boards.forEach(b => { b.objs.forEach(o => o.img && used.add(o.img)); if (b.bg.img) used.add(b.bg.img); });
+  const im = {}; used.forEach(id => { if (imgs.get(id)) im[id] = imgs.get(id).src; });
+  return { v: 1, cur, imgs: im, boards: boards.map(b => ({ id: b.id, objs: b.objs, bg: b.bg, view: b.view })) };
+}
+function load(d) {
+  imgs.clear(); for (const [id, src] of Object.entries(d.imgs || {})) { const el = new Image(); el.onload = dirty; el.src = src; imgs.set(id, { src, el }); }
+  boards = d.boards.map(b => ({ ...newBoard(), ...b, undo: [], redo: [], inst: [] })); if (!boards.length) boards = [newBoard()];
+  boards.forEach(b => b.objs.forEach(o => { if (o.type === 'text') measure(o); }));
+  cur = clamp(d.cur || 0, 0, boards.length - 1); sel.clear(); pageSync(); syncZoom(); syncUI(); dirty();
+}
+let saveT, warned = false;
+function save() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { try { localStorage.setItem('rmcanvas.wb.v1', JSON.stringify(serialize())); } catch (e) { if (!warned) { warned = true; toast('Could not autosave (browser storage is full)', 2500); } } }, 500);
+}
+
+/* ───────── Keyboard ───────── */
+window.addEventListener('keydown', e => {
+  if (/input|textarea|select/i.test(e.target.tagName) && e.target.type !== 'range') return;
+  const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (!$('#modal').hidden) { if (k === 'escape') $('#modal').hidden = true; return; }
+  if (k === ' ' && !spaceDown) { spaceDown = true; cv.style.cursor = 'grab'; e.preventDefault(); return; }
+  if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+  if (mod && k === 'a') { e.preventDefault(); setTool('select'); sel = new Set(objs().map(o => o.id)); dirty(); return; }
+  if (mod && k === 'c') { copySel(); return; } if (mod && k === 'x') { copySel(); delSel(); return; }
+  if (mod && k === 'd') { e.preventDefault(); dupSel(); return; }
+  if (mod) return;
+  if (k === 'delete' || k === 'backspace') { e.preventDefault(); delSel(); return; }
+  if (k === 'escape') { sel.clear(); geo.cancel(); closePop(); toggleSidebar(false); dirty(); return; }
+  if (k === 'enter' && tool === 'tools' && geo.state.tool) { geo.finish(); return; }
+  if (k.startsWith('arrow') && sel.size) {
+    e.preventDefault(); const st = e.shiftKey ? 10 : 1, dx = k === 'arrowleft' ? -st : k === 'arrowright' ? st : 0, dy = k === 'arrowup' ? -st : k === 'arrowdown' ? st : 0;
+    action(() => geo.moveMany(selObjs(), dx, dy, moveObj)); return;
+  }
+  const map = { v: 'select', h: 'move', p: 'pen', e: 'eraser', s: 'shapes', t: 'text' };
+  if (map[k]) { closePop(); setTool(map[k]); }
+});
+window.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; updateCursor(); } });
+
+/* ───────── Init ───────── */
+(function init() {
+  try { const d = JSON.parse(localStorage.getItem('rmcanvas.wb.v1')); if (d && d.boards) load(d); } catch (e) { }
+  resize(); pageSync(); syncUI(); syncZoom(); $('#toast').hidden = true; updateCursor();
+  if (document.fonts) document.fonts.ready.then(() => { boards.forEach(b => b.objs.forEach(o => o.type === 'text' && measure(o))); dirty(); });
+  // test hook
+  window.__wb = { geo, get boards() { return boards; }, get tool() { return tool; }, get sel() { return sel; }, S };
+})();
+})();
+
+</script>
 </body>
 </html>
