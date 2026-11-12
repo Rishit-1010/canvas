@@ -114,6 +114,7 @@
 .chip.icon{padding:0;height:42px}.chip svg{width:24px;height:24px;flex:none}
 .chip.tall{flex-direction:column;height:62px;gap:3px;font-size:12px}.chip.tall svg{width:26px;height:26px}
 .chip.dash{width:68px;padding:0}.chip.dash svg{width:44px;height:10px}
+#pop .tl .chip svg{width:24px;height:24px;flex:none}
 #pop .tl .chip{justify-content:flex-start;text-align:left;padding:7px 10px;font-size:12px;min-height:36px}
 #pop .more{max-height:0;overflow:hidden;opacity:0;transition:max-height .28s ease,opacity .2s,margin .2s}
 #pop .more.open{max-height:130px;opacity:1;margin-top:8px}

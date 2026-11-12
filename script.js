@@ -531,8 +531,9 @@ function renderPop() {
     const toggle = k => { if (on(k)) B().inst = B().inst.filter(i => i.k !== k); else { const c = toW(W / 2, H / 2), n = B().inst.length * 50; B().inst.push({ id: uid(), k, x: c.x + n, y: c.y + n, a: 0, r: 150 }); } renderPop(); dirty(); };
     pop.append(sec('Instruments', h('div', { class: 'grid2' }, [['ruler', 'Ruler'], ['square', 'Set square'], ['protractor', 'Protractor'], ['compass', 'Compass']].map(([k, n]) => chipBtn(n, on(k), () => toggle(k))))));
     for (const cat of geo.CATS) {
-      const items = geo.TOOLS.filter(t => t.cat === cat).map(t => chipBtn(t.label, geo.state.tool === t.id, () => { geo.setTool(t.id); closePop(); }));
-      if (cat === 'General') items.unshift(chipBtn('Move / select', !geo.state.tool, () => { geo.setTool(null); closePop(); }));
+      const ic = (id, b) => { b.insertAdjacentHTML('afterbegin', geo.icon(id)); return b; };
+      const items = geo.TOOLS.filter(t => t.cat === cat).map(t => ic(t.id, chipBtn(t.label, geo.state.tool === t.id, () => { geo.setTool(t.id); closePop(); })));
+      if (cat === 'General') items.unshift(ic('', chipBtn('Move / select', !geo.state.tool, () => { geo.setTool(null); closePop(); })));
       pop.append(sec(cat, h('div', { class: 'grid2 tl' }, items)));
     }
     pop.append(h('p', { class: 'hint', html: 'Pick a tool, then click on the board. <b>Esc</b> cancels. Drag points with <i>Move / select</i> and everything built on them follows.' }));

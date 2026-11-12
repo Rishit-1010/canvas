@@ -162,11 +162,12 @@ function compute(o) {
       const a0 = Math.atan2(-(A.by - A.ay), A.bx - A.ax), sw = nrm(Math.atan2(-(B.by - B.ay), B.bx - B.ax) - a0); return { t: 'ang', x: v.x, y: v.y, a0, a1: a0 + sw, deg: sw * 180 / Math.PI };
     }
     case 'meas': {
+      const beside = (ax, ay, bx, by) => { const L = Math.hypot(bx - ax, by - ay) || 1; let nx = -(by - ay) / L, ny = (bx - ax) / L; if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } const k = 20 / env.z(); return [(ax + bx) / 2 + nx * k, (ay + by) / 2 + ny * k]; };
       const r = R.map(P); if (r.some(x => !x)) return null; let v, x, y, txt;
       if (o.mt === 'dist') {
         const [A, B] = r;
-        if (A.t === 'p' && B && B.t === 'p') { v = dist(A, B); x = (A.x + B.x) / 2; y = (A.y + B.y) / 2 - 12; }
-        else if (A.t === 'l') { v = Math.hypot(A.bx - A.ax, A.by - A.ay); x = (A.ax + A.bx) / 2; y = (A.ay + A.by) / 2 - 12; }
+        if (A.t === 'p' && B && B.t === 'p') { v = dist(A, B); [x, y] = beside(A.x, A.y, B.x, B.y); }
+        else if (A.t === 'l') { v = Math.hypot(A.bx - A.ax, A.by - A.ay); [x, y] = beside(A.ax, A.ay, A.bx, A.by); }
         else if (A.t === 'c') { v = TAU * A.r * (A.a0 == null ? 1 : (A.a1 - A.a0) / TAU); x = A.x; y = A.y - A.r - 12; }
         else if (A.t === 'poly' || A.t === 'pl') { v = perimeter(A); x = A.pts[0].x; y = A.pts[0].y - 14; } else return null;
         txt = `${o.name} = ${cm(v)}${UNIT}`;
@@ -175,10 +176,10 @@ function compute(o) {
         else if (A.t === 'c') { v = Math.PI * A.r * A.r; x = A.x; y = A.y; } else return null;
         txt = `${o.name} = ${(v / CM / CM).toFixed(dp)}${UNIT ? UNIT + '²' : ''}`;
       } else {
-        const A = r[0]; if (A.t !== 'l') return null; const dx = A.bx - A.ax; x = (A.ax + A.bx) / 2; y = (A.ay + A.by) / 2 - 12;
+        const A = r[0]; if (A.t !== 'l') return null; const dx = A.bx - A.ax; [x, y] = beside(A.ax, A.ay, A.bx, A.by);
         txt = Math.abs(dx) < 1e-9 ? `${o.name} = undefined` : `${o.name} = ${(-(A.by - A.ay) / dx).toFixed(2)}`;
       }
-      return { t: 'txt', x, y, text: txt };
+      return { t: 'txt', x: x + (o.ox || 0), y: y + (o.oy || 0), text: txt };
     }
   }
   return null;
@@ -214,6 +215,7 @@ function hit(o, p, tol) {
     case 'poly': case 'pl': if (r.t === 'poly' && inPolyG(p, r.pts)) return true; return (segsOf(r) || []).some(s => segDist(p.x, p.y, s[0], s[1], s[2], s[3]) <= tol);
     case 'cn': return conicLines(r).some(l => { for (let i = 0; i < l.length - 1; i++) if (segDist(p.x, p.y, l[i][0], l[i][1], l[i + 1][0], l[i + 1][1]) <= tol) return true; return false; });
     case 'txt': return Math.abs(p.x - r.x) < 50 / z && Math.abs(p.y - r.y) < 10 / z;
+    case 'ang': { const m = (r.a0 + r.a1) / 2; return Math.abs(p.x - (r.x + 46 / z * Math.cos(m) + (o.ox || 0))) < 26 / z && Math.abs(p.y - (r.y - 46 / z * Math.sin(m) + (o.oy || 0))) < 11 / z; }
   }
   return false;
 }
@@ -275,7 +277,7 @@ function draw(c, o, z, f) {
       const rad = 28 / z; c.beginPath(); c.moveTo(r.x, r.y); c.arc(r.x, r.y, rad, -r.a0, -r.a1, true); c.closePath(); c.save(); c.fillStyle = 'rgba(220,60,60,.18)'; c.fill(); c.restore();
       c.lineWidth = 1.5 / z; c.stroke(); const m = (r.a0 + r.a1) / 2;
       c.font = `${14 / z}px Quicksand,sans-serif`; c.fillStyle = col; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText(r.deg.toFixed(1) + '°', r.x + 46 / z * Math.cos(m), r.y - 46 / z * Math.sin(m)); break;
+      c.fillText(r.deg.toFixed(1) + '°', r.x + 46 / z * Math.cos(m) + (o.ox || 0), r.y - 46 / z * Math.sin(m) + (o.oy || 0)); break;
     }
     case 'txt': {
       c.font = `${15 / z}px Quicksand,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; const w = c.measureText(r.text).width + 10 / z;
@@ -303,6 +305,7 @@ function moveMany(list, dx, dy, mv, p) {
   for (const o of list) {
     if (o.type !== 'geo') { mv(o, dx, dy); continue; }
     if (o.kind === 'ptOn') { if (list.length === 1 && p) reparam(o, p); continue; }
+    if (o.kind === 'meas' || o.kind === 'angle' || o.kind === 'angle2') { o.ox = (o.ox || 0) + dx; o.oy = (o.oy || 0) + dy; continue; }   // a measurement moves on its own
     collectFree(o, free);
   }
   for (const id of free) { const q = O(id); if (q) { q.x += dx; q.y += dy; } }
@@ -313,6 +316,64 @@ function withDependents(ids) {
   return out;
 }
 const isPoint = o => o.type === 'geo' && !!ev(o) && ev(o).t === 'p';
+
+
+/* ───── tool icons (24×24, drawn in currentColor) ───── */
+const ICON_BODY = (() => {
+  const D = (x, y, r = 1.9) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`;
+  const H = (x, y, r = 2.1) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/>`;
+  const T = (x, y, s, t) => `<text x="${x}" y="${y}" font-family="Quicksand,Arial,sans-serif" font-size="${s}" font-weight="700" fill="currentColor" stroke="none">${t}</text>`;
+  const AH = (x, y, a) => `<path d="M${x} ${y}l${(-5.5 * Math.cos(a - .45)).toFixed(2)} ${(-5.5 * Math.sin(a - .45)).toFixed(2)}M${x} ${y}l${(-5.5 * Math.cos(a + .45)).toFixed(2)} ${(-5.5 * Math.sin(a + .45)).toFixed(2)}"/>`;
+  const F = 'fill="currentColor" fill-opacity=".14"';
+  return {
+    '': `<path d="M6 3.5v15.2l4-3.7 2.6 5.4 2.4-1.2-2.6-5.2 5.4-.2z" fill="currentColor" fill-opacity=".18"/>`,
+    showHide: `<path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>${D(12, 12, 1.2)}`,
+    showLabel: `<path d="M5 20L12 4l7 16M7.8 14.5h8.4"/>`,
+    delete: `<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>`,
+    point: `<circle cx="12" cy="12" r="6" stroke-opacity=".35"/>${D(12, 12, 3.2)}`,
+    pointOn: `<path d="M3 19L21 5"/>${D(12, 12, 3)}`,
+    intersect: `<path d="M3 5l18 14M3 19L21 5"/>${H(12, 12, 2.7)}<circle cx="12" cy="12" r="2.7"/>`,
+    midpoint: `<path d="M4 18L20 6"/>${D(4, 18)}${D(20, 6)}${H(12, 12, 2.8)}<circle cx="12" cy="12" r="2.8"/><path d="M8.2 11.2l1.8 2.4M13.8 10.4l1.8 2.4" stroke-width="1.2"/>`,
+    line: `<path d="M2.5 19.5L21.5 4.5"/>${D(8, 15)}${D(16, 9)}`,
+    segment: `<path d="M5 18L19 6"/>${D(5, 18, 2.2)}${D(19, 6, 2.2)}`,
+    segLen: `<path d="M4 17L15 8"/>${D(4, 17)}${D(15, 8)}${T(16, 21, 10, '3')}`,
+    ray: `<path d="M5 18L20 5.5"/>${AH(20.5, 5.1, -.7)}${D(5, 18, 2.2)}`,
+    polyline: `<path d="M3.5 17l6-9 5.5 7 5.5-9"/>${D(3.5, 17)}${D(9.5, 8)}${D(15, 15)}${D(20.5, 6)}`,
+    vector: `<path d="M4 19L19 6"/><path d="M20.5 4.8l-6.2.9 4.2 4.5z" fill="currentColor"/>`,
+    vecFrom: `<path d="M7 17L19 7"/><path d="M20.5 5.8l-5.6.6 3.6 4z" fill="currentColor"/>${D(7, 17, 2.4)}<path d="M3 21l2-2" stroke-dasharray="1.6 2"/>`,
+    perp: `<path d="M3 19h18M12 3.5V19M12 14.5h4.5V19"/>`,
+    par: `<path d="M3 11L17 3M7 21l14-8"/><path d="M11 9.2l1 .1M14.6 15.6l1-.1" stroke-width="2.4"/>`,
+    perpBis: `<path d="M4 17.5h16M12 3v18"/>${D(4, 17.5)}${D(20, 17.5)}<path d="M12 14h3.5v3.5" stroke-width="1.2"/><path d="M8 15.8v3.4M16.2 15.8v3.4" stroke-width="1.4"/>`,
+    angBis: `<path d="M4 20L20 20M4 20L17 5" /><path d="M4 20L21 11.5" stroke-dasharray="2 2.2"/><path d="M11 20a7 7 0 0 0-1.5-4.4M13.5 20a9.5 9.5 0 0 0-2-6" stroke-width="1.2"/>`,
+    tangent: `<circle cx="12" cy="14" r="6"/><path d="M2 8h20"/>${D(12, 8, 2.1)}`,
+    polygon: `<path d="M4.5 17.5l2.5-11 11 2.5 1.5 8.5z" ${F}/>${D(4.5, 17.5)}${D(7, 6.5)}${D(18, 9)}${D(19.5, 17.5)}`,
+    regPoly: `<path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z" ${F}/>${D(12, 3, 1.7)}${D(19.8, 7.5, 1.7)}`,
+    circ2: `<circle cx="11" cy="12" r="8"/>${D(11, 12)}${D(19, 12)}`,
+    circR: `<circle cx="11" cy="12" r="8"/>${D(11, 12)}<path d="M11 12h8" stroke-dasharray="1.8 1.8"/>${T(13.5, 10.5, 8.5, 'r')}`,
+    compassC: `<path d="M12 3.5v3.5M12 7L7 21M12 7l5 14M9.2 16h5.6"/><circle cx="12" cy="4.3" r="1.6" fill="currentColor"/>`,
+    circ3: `<circle cx="12" cy="12" r="8.5"/>${D(12, 3.5)}${D(19.4, 16.2)}${D(4.6, 16.2)}`,
+    semi: `<path d="M3.5 16a8.5 8.5 0 0 1 17 0z" ${F}/>${D(3.5, 16)}${D(20.5, 16)}`,
+    arc: `<path d="M5 18.5A9 9 0 0 1 19 18.5"/>${D(12, 13, 1.7)}${D(5, 18.5)}${D(19, 18.5)}<path d="M12 13L5 18.5M12 13l7 5.5" stroke-dasharray="1.6 2" stroke-width="1.2"/>`,
+    sector: `<path d="M12 19L4.5 9a9.5 9.5 0 0 1 15 0z" ${F}/>${D(12, 19)}`,
+    arc3: `<path d="M4 17A9 9 0 0 1 20 17"/>${D(4, 17)}${D(12, 7.9)}${D(20, 17)}`,
+    sector3: `<path d="M12 19L4.5 9a9.5 9.5 0 0 1 15 0z" ${F}/>${D(4.5, 9)}${D(12, 3.7)}${D(19.5, 9)}`,
+    ellipse: `<ellipse cx="12" cy="12" rx="9.5" ry="6"/>${D(8, 12, 1.7)}${D(16, 12, 1.7)}`,
+    hyper: `<path d="M3.5 4c2.5 4 2.5 12 0 16M20.5 4c-2.5 4-2.5 12 0 16"/>${D(9.5, 12, 1.7)}${D(14.5, 12, 1.7)}`,
+    parab: `<path d="M4.5 3.5C7 16 10 20.5 12 20.5S17 16 19.5 3.5"/>${D(12, 12, 1.8)}<path d="M3 3h18" stroke-dasharray="1.8 2" stroke-width="1.2"/>`,
+    angle: `<path d="M4 20h16M4 20L16 5"/><path d="M11 20a7 7 0 0 0-2.2-5.1" />${D(4, 20, 1.7)}`,
+    angleSize: `<path d="M3.5 20h12M3.5 20L13 5"/><path d="M9 20a5.5 5.5 0 0 0-1.8-4"/>${T(13.5, 12.5, 8.5, '45°')}`,
+    dist: `<path d="M5 19L19 5"/>${D(5, 19)}${D(19, 5)}<path d="M2.5 14.5l2.5 5-5 -2.5M0 0" stroke="none"/><path d="M8 7.5l-2.5 -1M8 7.5l1 -2.5" stroke="none"/>${T(3, 9.5, 9, 'd')}`,
+    area: `<path d="M4 18l3-12 12 3 1.5 9z" fill="currentColor" fill-opacity=".28"/>${T(8.5, 15, 8, 'A')}`,
+    slope: `<path d="M3 19L20 5"/><path d="M8 15.5h8.6V8.8" stroke-dasharray="1.8 2" stroke-width="1.3"/>${T(11, 20.5, 8.5, 'm')}`,
+    reflLine: `<path d="M12 2v20" stroke-dasharray="2.4 2.4" stroke-width="1.3"/><path d="M3 18l1.5-9 5.5 5z" ${F}/><path d="M21 18l-1.5-9-5.5 5z" ${F} stroke-opacity=".55"/>`,
+    reflPt: `<path d="M12 2v20" stroke-dasharray="2.4 2.4" stroke-width="1.3"/>${D(5, 9, 2.3)}${D(19, 9, 2.3)}<path d="M5 9h14" stroke-width="1" stroke-dasharray="1 2"/>`,
+    inv: `<circle cx="11" cy="13" r="7"/>${D(11, 13, 1.5)}${D(15.4, 13, 1.7)}${D(21, 13, 1.7)}<path d="M11 13h10" stroke-width="1" stroke-dasharray="1 2"/>`,
+    rotate: `<path d="M19 12a7 7 0 1 1-2.4-5.3"/><path d="M17.8 2.8l-.9 4.6 4.5-1z" fill="currentColor"/>${D(12, 12, 1.9)}`,
+    translate: `<rect x="3" y="12" width="6.5" height="6.5" ${F}/><rect x="14.5" y="5" width="6.5" height="6.5" stroke-dasharray="2 1.8"/><path d="M10.5 15l3-3" /><path d="M14.5 10.5l-.2 3.3-3.2-.4" stroke-width="1.5"/>`,
+    dilate: `<path d="M6 18l2.5-4.5 3 4.5z" ${F}/><path d="M6 18l5-8.5 6 8.5z" stroke-opacity=".5" stroke-dasharray="2 2"/><path d="M3.5 20.5l15-13" stroke-width="1" stroke-opacity=".5"/>${D(3.5, 20.5, 1.7)}`,
+  };
+})();
+const icon = id => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_BODY[id] != null ? ICON_BODY[id] : ICON_BODY.point}</svg>`;
 
 /* ───── naming / creation ───── */
 function nextName(kind) {
@@ -399,7 +460,7 @@ const TOOLS = [
   { id: 'showLabel', cat: 'General', label: 'Show / hide label', special: 'lbl' },
   { id: 'delete', cat: 'General', label: 'Delete object', special: 'del' },
 ];
-const CATS = [...new Set(TOOLS.map(t => t.cat))];
+const CATS = ['General', 'Points', 'Lines', 'Special lines', 'Polygons', 'Measure', ...new Set(TOOLS.map(t => t.cat))].filter((c, i, a) => a.indexOf(c) === i && TOOLS.some(t => t.cat === c));
 const DESC = { P: 'a point', L: 'a line', S: 'a segment', C: 'a circle', Y: 'a polygon', O: 'an object', X: 'an object', D: 'a point, segment, circle or polygon', A: 'a polygon or circle', M: 'a point, segment or circle', V: 'a vector', I: 'an object to intersect', ON: 'an object to place the point on' };
 function match(n, r, o) {
   if (!r) return false;
@@ -486,10 +547,15 @@ function preview(c, z, hover) {
   const t = T(); if (!t || t.special) return;
   c.save(); c.lineWidth = 1.5 / z;
   for (const id of state.refs) { const r = P(id); if (!r) continue; c.strokeStyle = '#e53935'; c.beginPath(); if (r.t === 'p') c.arc(r.x, r.y, 9 / z, 0, TAU); else { const b = gbox(O(id)); c.rect(b.x, b.y, b.w, b.h); } c.stroke(); }
+  if (['polygon', 'polyline', 'angle', 'arc3', 'sector3', 'circ3'].includes(t.id)) {
+    const pp = state.refs.map(P).filter(q => q && q.t === 'p');
+    if (pp.length > 1) { c.setLineDash([]); c.strokeStyle = GEO; c.lineWidth = 2 / z; c.beginPath(); pp.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); c.stroke(); c.lineWidth = 1.5 / z; }
+    if (t.id === 'polygon' && pp.length > 1 && hover) { c.setLineDash([3 / z, 5 / z]); c.strokeStyle = 'rgba(11,61,145,.45)'; c.beginPath(); c.moveTo(hover.x, hover.y); c.lineTo(pp[0].x, pp[0].y); c.stroke(); c.setLineDash([]); }
+  }
   const last = state.refs.length && P(state.refs[state.refs.length - 1]);
   if (last && last.t === 'p' && hover) { c.setLineDash([6 / z, 5 / z]); c.strokeStyle = GEO; c.beginPath(); c.moveTo(last.x, last.y); c.lineTo(hover.x, hover.y); c.stroke(); }
   c.restore();
 }
 
-return { TOOLS, CATS, state, setTool, cancel, click, finish, dblclick, preview, draw, hit, gbox, reset, moveMany, withDependents, isPoint, hintText, ev, O, P };
+return { icon, TOOLS, CATS, state, setTool, cancel, click, finish, dblclick, preview, draw, hit, gbox, reset, moveMany, withDependents, isPoint, hintText, ev, O, P };
 };

@@ -144,3 +144,15 @@
   #settings{right:10px;top:68px;width:min(290px,calc(100vw - 20px))}
 }
 @media (max-height:560px){ #kpad{max-height:64vh} }
+
+/* panel open button, scrollbars that appear only while scrolling */
+.coll.open{position:absolute;left:18px;top:23px;z-index:20;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3),0 0 0 .5px rgba(0,4,85,.12)}
+.coll.open svg{transform:scaleX(-1)}.coll.open:hover{transform:translateX(2px);background:#EEF0FF}
+#panel:not(.collapsed)~#gstage #openPanelBtn{display:none}
+.pane,.kbody,#settings{scrollbar-width:thin;scrollbar-color:transparent transparent}
+.scrolling{scrollbar-color:rgba(0,4,85,.45) transparent!important}
+.ktabs .kx{width:32px;height:32px;flex:none;border-radius:8px;font-size:22px;line-height:1;color:var(--navy);background:#E4E7FB;transition:background .15s,color .15s,transform .15s}
+.ktabs .kx:hover{background:#c62828;color:#fff;transform:rotate(90deg)}
+.chip{display:flex;align-items:center;gap:8px}.chip svg{width:24px;height:24px;flex:none}
+.chip span{min-width:0}
+@media (max-width:760px){.coll.open{left:12px;top:17px}}

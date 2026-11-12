@@ -519,14 +519,14 @@ function delGeo(ids) {
 }
 function buildTools() {
   const p = $('#toolsPane'); p.replaceChildren();
-  p.append(h('h3', {}, ['General']), h('div', { class: 'grid' }, [h('button', { class: 'chip wide', 'data-tool': '', on: { click: () => { geo.setTool(null); } } }, ['Move / select'])]));
+  p.append(h('h3', {}, ['General']), h('div', { class: 'grid' }, [h('button', { class: 'chip wide', 'data-tool': '', html: geo.icon('') + '<span>Move / select</span>', on: { click: () => { geo.setTool(null); } } })]));
   for (const cat of geo.CATS) {
     if (cat === 'General') { const g = $('.grid', p); for (const t of geo.TOOLS.filter(t => t.cat === cat)) g.append(chip(t)); continue; }
     p.append(h('h3', {}, [cat]), h('div', { class: 'grid' }, geo.TOOLS.filter(t => t.cat === cat).map(chip)));
   }
   syncToolChips();
 }
-const chip = t => h('button', { class: 'chip', 'data-tool': t.id, on: { click: () => { geo.setTool(geo.state.tool === t.id ? null : t.id); } } }, [t.label]);
+const chip = t => h('button', { class: 'chip', 'data-tool': t.id, html: geo.icon(t.id) + '<span>' + t.label + '</span>', on: { click: () => { geo.setTool(geo.state.tool === t.id ? null : t.id); } } });
 function syncToolChips() { for (const c of document.querySelectorAll('#toolsPane .chip')) c.classList.toggle('on', (c.dataset.tool || null) === (geo.state.tool || null)); }
 
 /* ───────── Pointer interaction ───────── */
@@ -543,6 +543,7 @@ const litPointAt = (s) => {
   return null;
 };
 cv.addEventListener('pointerdown', e => {
+  if (narrow() && !panel.classList.contains('collapsed')) { panel.classList.add('collapsed'); e.preventDefault(); return; }   // tap outside the panel only closes it
   cv.setPointerCapture(e.pointerId); const s = posOf(e); ptrs.set(e.pointerId, s); closeSettings(); closeKeypadFocus();
   cancelAnimationFrame(anim);
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; drag = null; return; }
@@ -648,6 +649,8 @@ function applySettings() {
 function clearAll() { const b = snapStr(); rows = []; geoObjs = []; selIds = new Set(); focusId = null; ensureTail(); renderRows(); recompute(); renderGeoRows(); pushHist(b); base = snapStr(); }
 
 /* ───────── Panels, rail, keypad ───────── */
+function autoScroll(el) { let t; el.addEventListener('scroll', () => { el.classList.add('scrolling'); clearTimeout(t); t = setTimeout(() => el.classList.remove('scrolling'), 900); }, { passive: true }); }
+['#algebra', '#toolsPane', '#settings'].forEach(q => autoScroll($(q)));
 const panel = $('#panel');
 function showPanel(name) {
   if (name === 'tools' && !geo.TOOLS.length) return;
@@ -662,6 +665,8 @@ function showPanel(name) {
 const narrow = () => matchMedia('(max-width:760px)').matches, coarse = () => matchMedia('(pointer:coarse)').matches;
 document.querySelectorAll('.rb').forEach(b => b.addEventListener('click', () => showPanel(b.dataset.panel)));
 $('#collapseBtn').addEventListener('click', () => panel.classList.add('collapsed'));
+$('#openPanelBtn').addEventListener('click', () => showPanel(panelTab));
+$('#clearBtn').addEventListener('click', () => confirmBox('Clear every expression and construction?', 'Clear all', clearAll));
 
 let kpOpen = false, kpTab = '123';
 const kp = $('#kpad');
@@ -693,7 +698,8 @@ const ABC_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'], GREEK = ['α', 'β', '�
 function buildKeypad() {
   kp.replaceChildren();
   const tabs = h('div', { class: 'ktabs' }, [['123', '123'], ['fn', 'f(x)'], ['abc', 'ABC']].map(([id, l]) => h('button', { class: 'ktab' + (kpTab === id ? ' on' : ''), on: { click: () => { kpTab = id; buildKeypad(); } } }, [l])));
-  const body = h('div', { class: 'kbody' }); kp.append(tabs, body);
+  tabs.append(h('button', { class: 'kx', title: 'Close keypad', 'aria-label': 'Close keypad', type: 'button', on: { click: () => setKeypad(false) } }, ['×']));
+  const body = h('div', { class: 'kbody' }); kp.append(tabs, body); autoScroll(body);
   const key = (k) => { const b = h('button', { class: 'k ' + k.cls, html: k.label, type: 'button' }); b.addEventListener('pointerdown', e => e.preventDefault()); b.addEventListener('click', () => press(k.ins)); return b; };
   if (kpTab === '123') body.append(h('div', { class: 'kgrid', style: 'grid-template-columns:repeat(6,1fr)' }, NUM_KEYS.map(key)));
   if (kpTab === 'fn') for (const [t, items] of FN_SECTIONS) body.append(h('div', { class: 'kh' }, [t]), h('div', { class: 'kgrid', style: 'grid-template-columns:repeat(4,1fr)' }, items.map(([l, i]) => key(K(l, i, 'fn')))));
