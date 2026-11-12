@@ -140,7 +140,7 @@
   #panel.collapsed{width:0}
   #gstage{margin-left:0}
   .fab{width:46px;height:46px}.fab svg{width:20px;height:20px}
-  #fabs{right:12px;bottom:12px;gap:8px}#setBtn{top:12px;right:12px}
+  #fabs{right:12px;bottom:12px;gap:8px}.fab{width:44px;height:44px}#setBtn{top:12px;right:12px}
   #settings{right:10px;top:68px;width:min(290px,calc(100vw - 20px))}
 }
 @media (max-height:560px){ #kpad{max-height:64vh} }
@@ -156,3 +156,5 @@
 .chip{display:flex;align-items:center;gap:8px}.chip svg{width:24px;height:24px;flex:none}
 .chip span{min-width:0}
 @media (max-width:760px){.coll.open{left:12px;top:17px}}
+.fab:disabled{opacity:.4;cursor:default;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.fab:disabled:hover{transform:none}

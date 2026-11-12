@@ -331,9 +331,9 @@ const ICON_BODY = (() => {
     showLabel: `<path d="M5 20L12 4l7 16M7.8 14.5h8.4"/>`,
     delete: `<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>`,
     point: `<circle cx="12" cy="12" r="6" stroke-opacity=".35"/>${D(12, 12, 3.2)}`,
-    pointOn: `<path d="M3 19L21 5"/>${D(12, 12, 3)}`,
+    pointOn: `<path d="M3 19L21 5"/><circle cx="12" cy="12" r="3.2" fill="#fff"/>${D(12, 12, 1.8)}`,
     intersect: `<path d="M3 5l18 14M3 19L21 5"/>${H(12, 12, 2.7)}<circle cx="12" cy="12" r="2.7"/>`,
-    midpoint: `<path d="M4 18L20 6"/>${D(4, 18)}${D(20, 6)}${H(12, 12, 2.8)}<circle cx="12" cy="12" r="2.8"/><path d="M8.2 11.2l1.8 2.4M13.8 10.4l1.8 2.4" stroke-width="1.2"/>`,
+    midpoint: `<path d="M4 18L20 6"/>${D(4, 18, 2)}${D(20, 6, 2)}<circle cx="12" cy="12" r="3" fill="#fff"/>${D(12, 12, 1.5)}`,
     line: `<path d="M2.5 19.5L21.5 4.5"/>${D(8, 15)}${D(16, 9)}`,
     segment: `<path d="M5 18L19 6"/>${D(5, 18, 2.2)}${D(19, 6, 2.2)}`,
     segLen: `<path d="M4 17L15 8"/>${D(4, 17)}${D(15, 8)}${T(16, 21, 10, '3')}`,
@@ -342,35 +342,35 @@ const ICON_BODY = (() => {
     vector: `<path d="M4 19L19 6"/><path d="M20.5 4.8l-6.2.9 4.2 4.5z" fill="currentColor"/>`,
     vecFrom: `<path d="M7 17L19 7"/><path d="M20.5 5.8l-5.6.6 3.6 4z" fill="currentColor"/>${D(7, 17, 2.4)}<path d="M3 21l2-2" stroke-dasharray="1.6 2"/>`,
     perp: `<path d="M3 19h18M12 3.5V19M12 14.5h4.5V19"/>`,
-    par: `<path d="M3 11L17 3M7 21l14-8"/><path d="M11 9.2l1 .1M14.6 15.6l1-.1" stroke-width="2.4"/>`,
-    perpBis: `<path d="M4 17.5h16M12 3v18"/>${D(4, 17.5)}${D(20, 17.5)}<path d="M12 14h3.5v3.5" stroke-width="1.2"/><path d="M8 15.8v3.4M16.2 15.8v3.4" stroke-width="1.4"/>`,
-    angBis: `<path d="M4 20L20 20M4 20L17 5" /><path d="M4 20L21 11.5" stroke-dasharray="2 2.2"/><path d="M11 20a7 7 0 0 0-1.5-4.4M13.5 20a9.5 9.5 0 0 0-2-6" stroke-width="1.2"/>`,
+    par: `<path d="M3 9.5L19 3M5 21L21 14.5"/><path d="M9.5 6.2l1.6-.7M13 18.6l1.6-.7" stroke-width="1.2"/>`,
+    perpBis: `<path d="M3 18h18M12 3v18"/><path d="M12 14.5h3.5V18" stroke-width="1.3"/>${D(5, 18, 1.8)}${D(19, 18, 1.8)}`,
+    angBis: `<path d="M4 20h17M4 20L15 4"/><path d="M4 20L21 10" stroke-dasharray="2.4 2.2"/><path d="M10 20a6.5 6.5 0 0 0-1.2-3.6" stroke-width="1.3"/>`,
     tangent: `<circle cx="12" cy="14" r="6"/><path d="M2 8h20"/>${D(12, 8, 2.1)}`,
     polygon: `<path d="M4.5 17.5l2.5-11 11 2.5 1.5 8.5z" ${F}/>${D(4.5, 17.5)}${D(7, 6.5)}${D(18, 9)}${D(19.5, 17.5)}`,
     regPoly: `<path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z" ${F}/>${D(12, 3, 1.7)}${D(19.8, 7.5, 1.7)}`,
     circ2: `<circle cx="11" cy="12" r="8"/>${D(11, 12)}${D(19, 12)}`,
-    circR: `<circle cx="11" cy="12" r="8"/>${D(11, 12)}<path d="M11 12h8" stroke-dasharray="1.8 1.8"/>${T(13.5, 10.5, 8.5, 'r')}`,
+    circR: `<circle cx="11" cy="13" r="7.5"/>${D(11, 13, 1.9)}<path d="M11 13h7.5" stroke-dasharray="1.8 1.8"/>${T(14.5, 8, 8, 'r')}`,
     compassC: `<path d="M12 3.5v3.5M12 7L7 21M12 7l5 14M9.2 16h5.6"/><circle cx="12" cy="4.3" r="1.6" fill="currentColor"/>`,
     circ3: `<circle cx="12" cy="12" r="8.5"/>${D(12, 3.5)}${D(19.4, 16.2)}${D(4.6, 16.2)}`,
     semi: `<path d="M3.5 16a8.5 8.5 0 0 1 17 0z" ${F}/>${D(3.5, 16)}${D(20.5, 16)}`,
-    arc: `<path d="M5 18.5A9 9 0 0 1 19 18.5"/>${D(12, 13, 1.7)}${D(5, 18.5)}${D(19, 18.5)}<path d="M12 13L5 18.5M12 13l7 5.5" stroke-dasharray="1.6 2" stroke-width="1.2"/>`,
+    arc: `<path d="M4 18A9.5 9.5 0 0 1 20 18"/>${D(12, 12.5, 1.8)}${D(4, 18, 1.8)}${D(20, 18, 1.8)}`,
     sector: `<path d="M12 19L4.5 9a9.5 9.5 0 0 1 15 0z" ${F}/>${D(12, 19)}`,
-    arc3: `<path d="M4 17A9 9 0 0 1 20 17"/>${D(4, 17)}${D(12, 7.9)}${D(20, 17)}`,
+    arc3: `<path d="M3.5 18A9.5 9.5 0 0 1 20.5 18"/>${D(3.5, 18, 1.9)}${D(12, 8.6, 1.9)}${D(20.5, 18, 1.9)}`,
     sector3: `<path d="M12 19L4.5 9a9.5 9.5 0 0 1 15 0z" ${F}/>${D(4.5, 9)}${D(12, 3.7)}${D(19.5, 9)}`,
     ellipse: `<ellipse cx="12" cy="12" rx="9.5" ry="6"/>${D(8, 12, 1.7)}${D(16, 12, 1.7)}`,
     hyper: `<path d="M3.5 4c2.5 4 2.5 12 0 16M20.5 4c-2.5 4-2.5 12 0 16"/>${D(9.5, 12, 1.7)}${D(14.5, 12, 1.7)}`,
     parab: `<path d="M4.5 3.5C7 16 10 20.5 12 20.5S17 16 19.5 3.5"/>${D(12, 12, 1.8)}<path d="M3 3h18" stroke-dasharray="1.8 2" stroke-width="1.2"/>`,
     angle: `<path d="M4 20h16M4 20L16 5"/><path d="M11 20a7 7 0 0 0-2.2-5.1" />${D(4, 20, 1.7)}`,
-    angleSize: `<path d="M3.5 20h12M3.5 20L13 5"/><path d="M9 20a5.5 5.5 0 0 0-1.8-4"/>${T(13.5, 12.5, 8.5, '45°')}`,
-    dist: `<path d="M5 19L19 5"/>${D(5, 19)}${D(19, 5)}<path d="M2.5 14.5l2.5 5-5 -2.5M0 0" stroke="none"/><path d="M8 7.5l-2.5 -1M8 7.5l1 -2.5" stroke="none"/>${T(3, 9.5, 9, 'd')}`,
+    angleSize: `<path d="M3 20h11M3 20L11 6"/><path d="M8 20a5 5 0 0 0-1.2-3.4"/>${T(11.5, 14, 7, '45°')}`,
+    dist: `<path d="M5 19L19 5"/>${D(5, 19, 2)}${D(19, 5, 2)}${T(4, 8.5, 9, 'd')}`,
     area: `<path d="M4 18l3-12 12 3 1.5 9z" fill="currentColor" fill-opacity=".28"/>${T(8.5, 15, 8, 'A')}`,
-    slope: `<path d="M3 19L20 5"/><path d="M8 15.5h8.6V8.8" stroke-dasharray="1.8 2" stroke-width="1.3"/>${T(11, 20.5, 8.5, 'm')}`,
+    slope: `<path d="M3 20L20 5"/><path d="M9 15.8h9V7.8" stroke-dasharray="1.8 2" stroke-width="1.3"/>${T(5, 10, 8.5, 'm')}`,
     reflLine: `<path d="M12 2v20" stroke-dasharray="2.4 2.4" stroke-width="1.3"/><path d="M3 18l1.5-9 5.5 5z" ${F}/><path d="M21 18l-1.5-9-5.5 5z" ${F} stroke-opacity=".55"/>`,
-    reflPt: `<path d="M12 2v20" stroke-dasharray="2.4 2.4" stroke-width="1.3"/>${D(5, 9, 2.3)}${D(19, 9, 2.3)}<path d="M5 9h14" stroke-width="1" stroke-dasharray="1 2"/>`,
-    inv: `<circle cx="11" cy="13" r="7"/>${D(11, 13, 1.5)}${D(15.4, 13, 1.7)}${D(21, 13, 1.7)}<path d="M11 13h10" stroke-width="1" stroke-dasharray="1 2"/>`,
+    reflPt: `<path d="M12 2v20" stroke-dasharray="2.4 2.4" stroke-width="1.3"/>${D(5, 12, 2.2)}${D(19, 12, 2.2)}<path d="M7.5 12h9" stroke-width="1"/>`,
+    inv: `<circle cx="9" cy="12" r="6"/>${D(9, 12, 1.4)}${D(13.5, 12, 1.8)}${D(20, 12, 1.8)}<path d="M9 12h11" stroke-width="1" stroke-dasharray="1 2"/>`,
     rotate: `<path d="M19 12a7 7 0 1 1-2.4-5.3"/><path d="M17.8 2.8l-.9 4.6 4.5-1z" fill="currentColor"/>${D(12, 12, 1.9)}`,
-    translate: `<rect x="3" y="12" width="6.5" height="6.5" ${F}/><rect x="14.5" y="5" width="6.5" height="6.5" stroke-dasharray="2 1.8"/><path d="M10.5 15l3-3" /><path d="M14.5 10.5l-.2 3.3-3.2-.4" stroke-width="1.5"/>`,
-    dilate: `<path d="M6 18l2.5-4.5 3 4.5z" ${F}/><path d="M6 18l5-8.5 6 8.5z" stroke-opacity=".5" stroke-dasharray="2 2"/><path d="M3.5 20.5l15-13" stroke-width="1" stroke-opacity=".5"/>${D(3.5, 20.5, 1.7)}`,
+    translate: `<rect x="3" y="13" width="6.5" height="6.5" ${F}/><rect x="14.5" y="4.5" width="6.5" height="6.5" stroke-dasharray="2 1.8"/><path d="M10.5 12.5l3-2.5M13.8 10.2l-.1-2.4M13.8 10.2l-2.4.2" stroke-width="1.4"/>`,
+    dilate: `<path d="M5 19l3-5 3.5 5z" ${F}/><path d="M5 19l6-10 7 10z" stroke-dasharray="2 2"/>${D(5, 19, 1.8)}`,
   };
 })();
 const icon = id => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_BODY[id] != null ? ICON_BODY[id] : ICON_BODY.point}</svg>`;
@@ -549,6 +549,7 @@ function preview(c, z, hover) {
   for (const id of state.refs) { const r = P(id); if (!r) continue; c.strokeStyle = '#e53935'; c.beginPath(); if (r.t === 'p') c.arc(r.x, r.y, 9 / z, 0, TAU); else { const b = gbox(O(id)); c.rect(b.x, b.y, b.w, b.h); } c.stroke(); }
   if (['polygon', 'polyline', 'angle', 'arc3', 'sector3', 'circ3'].includes(t.id)) {
     const pp = state.refs.map(P).filter(q => q && q.t === 'p');
+    if (t.id === 'polygon') { const fp = hover ? pp.concat([hover]) : pp; if (fp.length > 2) { c.beginPath(); fp.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); c.closePath(); c.fillStyle = 'rgba(11,61,145,.16)'; c.fill(); } }
     if (pp.length > 1) { c.setLineDash([]); c.strokeStyle = GEO; c.lineWidth = 2 / z; c.beginPath(); pp.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); c.stroke(); c.lineWidth = 1.5 / z; }
     if (t.id === 'polygon' && pp.length > 1 && hover) { c.setLineDash([3 / z, 5 / z]); c.strokeStyle = 'rgba(11,61,145,.45)'; c.beginPath(); c.moveTo(hover.x, hover.y); c.lineTo(pp[0].x, pp[0].y); c.stroke(); c.setLineDash([]); }
   }
