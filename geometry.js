@@ -497,8 +497,8 @@ function hintText() {
 function pick(need, p, z) {
   const tol = 9 / z, needs = [].concat(need), list = objs().filter(o => o.type === 'geo').reverse();
   const ok = o => !o.hidden || state.ghost;
-  if (needs.includes('P')) { const e = list.find(o => ok(o) && ev(o)?.t === 'p' && hit(o, p, tol)); if (e) return e.id; }
-  for (const n of needs) if (n !== 'P') { const e = list.find(o => ok(o) && match(n, ev(o), o) && (ev(o).t !== 'p') && hit(o, p, tol)); if (e) return e.id; }
+  if (needs.some(n => n === 'P' || ['M', 'D', 'O', 'X'].includes(n))) { const e = list.find(o => ok(o) && ev(o)?.t === 'p' && hit(o, p, tol)); if (e) return e.id; }
+  for (const n of needs) if (n !== 'P' && n !== 'ON') { const e = list.find(o => ok(o) && match(n, ev(o), o) && (ev(o).t !== 'p') && hit(o, p, tol)); if (e) return e.id; }
   if (needs.includes('ON') || needs.includes('P')) {
     const on = list.find(o => ok(o) && ['l', 'c'].includes(ev(o)?.t) && hit(o, p, tol));
     if (on) {
