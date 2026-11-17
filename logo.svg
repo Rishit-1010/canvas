@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="140 290 2070 670" role="img" aria-label="Rishit's Canvas">
+  <!-- Rishit's Canvas logo (vector redraw of the supplied image, transparent background).
+       The two words are live text, so they need the Google fonts below.
+       Opened directly in a browser the @import loads them; inside index.html the same
+       markup is inlined and uses the page's fonts.
+       To get a fully self-contained file, open this in Figma and "Outline stroke / text" before exporting. -->
+  <style>@import url('https://fonts.googleapis.com/css2?family=Manufacturing+Consent&amp;family=Anta&amp;display=swap');</style>
+  <defs>
+    <!-- cuts a clean gap into the board outline where the pen crosses it -->
+    <mask id="penCut" maskUnits="userSpaceOnUse" x="0" y="0" width="2400" height="1260">
+      <rect width="2400" height="1260" fill="#fff"/>
+      <path d="M505 580 L503 676 Q503 684 511 680 L592 641 Q597 638 601 632 L765 388 Q772 378 764 370 L712 332 Q696 318 684 331 L509 574 Q505 578 505 580 Z"
+            fill="#000" stroke="#000" stroke-width="56" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+
+  <g fill="none" stroke="#000455" stroke-linecap="round" stroke-linejoin="round">
+    <!-- board -->
+    <rect x="173" y="410" width="596" height="520" rx="48" stroke-width="32" mask="url(#penCut)"/>
+    <!-- pen -->
+    <path d="M505 580 L503 676 Q503 684 511 680 L592 641 Q597 638 601 632 L765 388 Q772 378 764 370 L712 332 Q696 318 684 331 L509 574 Q505 578 505 580 Z" stroke-width="24"/>
+  </g>
+
+  <!-- brush squiggle that ends at the pen tip -->
+  <path fill="#000455"
+        d="M222 676 C250 640 290 628 335 645 C380 662 400 700 440 712 C468 718 490 700 498 684 C484 696 465 710 436 720 C396 724 372 690 334 668 C294 646 254 650 222 676 Z"/>
+
+  <!-- wordmark -->
+  <text x="885" y="660" font-family="'Manufacturing Consent', serif" font-size="430" fill="#000455"
+        textLength="1305" lengthAdjust="spacingAndGlyphs">Rishit’s</text>
+  <text x="915" y="897" font-family="'Anta', sans-serif" font-size="185" fill="#000455"
+        textLength="1235" lengthAdjust="spacing">CANVAS</text>
+</svg>

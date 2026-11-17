@@ -128,11 +128,30 @@
   <!-- generic confirmation dialog (used by Clear, Delete board …) -->
   <div id="modal"></div>
 
-  <!-- scripts: order matters -->
-  <script src="js/icons.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/geometry.js"></script>
-  <script src="js/whiteboard.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Scripts are loaded one after another (order matters).
+       Each file is looked up in js/ first, then next to index.html, so the site works
+       whether or not you kept the js/ folder. If a file is missing, a message says which. -->
+  <script>
+    (function () {
+      var files = ['icons', 'ui', 'geometry', 'whiteboard', 'app'], i = 0;
+      function load(src, ok, fail) {
+        var s = document.createElement('script');
+        s.src = src; s.onload = ok; s.onerror = fail;
+        document.body.appendChild(s);
+      }
+      function missing(name) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:70px;left:16px;right:16px;z-index:999;background:#fff;border:2px solid #000455;padding:12px;border-radius:12px;font:14px sans-serif;color:#000455';
+        d.textContent = 'Could not load ' + name + '.js. Upload all the .js files next to index.html, or inside a folder named js.';
+        document.body.appendChild(d);
+      }
+      function next() {
+        if (i === files.length) return;
+        var n = files[i++];
+        load('js/' + n + '.js', next, function () { load(n + '.js', next, function () { missing(n); }); });
+      }
+      next();
+    })();
+  </script>
 </body>
 </html>
