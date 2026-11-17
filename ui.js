@@ -26,9 +26,18 @@
     return el;
   }
 
-  /* fills every [data-icon="name"] element with the matching SVG */
+  /* Fills every [data-icon="name"] element with the matching SVG.
+     Elements that also have data-exact are placed at the exact size and offset
+     taken from the design (see ICON_BOX in icons-design.js); their parent must be position:relative. */
   function hydrateIcons(root = document) {
-    root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = ICONS[el.dataset.icon] || ''; });
+    root.querySelectorAll('[data-icon]').forEach(el => {
+      const name = el.dataset.icon;
+      el.innerHTML = ICONS[name] || '';
+      const b = window.ICON_BOX && window.ICON_BOX[name];
+      if (el.hasAttribute('data-exact') && b) {
+        Object.assign(el.style, { position: 'absolute', left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
+      }
+    });
   }
 
   /* ---------- colour maths ---------- */
@@ -132,14 +141,39 @@
   const title = (text, icon) => h('div', { class: 'pop-title', html: (icon ? ICONS[icon] : '') + `<span>${text}</span>` });
   const section = (label, ...kids) => h('div', { class: 'pop-sec' }, label ? h('div', { class: 'pop-label', text: label }) : null, ...kids);
 
-  /* slider with live value read-out */
+  /* Slider: a navy "filled" track, a big round thumb and a value pill.
+     The filled part is drawn by CSS using the --p variable (0-100%). */
   function slider({ min, max, value, step = 1, unit = '', onInput }) {
     const val = h('span', { class: 'slider-val' });
     const inp = h('input', { type: 'range', min, max, step, value });
-    const upd = () => { val.textContent = inp.value + unit; };
+    const upd = () => {
+      val.textContent = inp.value + unit;
+      inp.style.setProperty('--p', ((inp.value - min) / (max - min)) * 100 + '%');
+    };
     inp.addEventListener('input', () => { upd(); onInput(+inp.value); });
     upd();
     return h('div', { class: 'slider-row' }, inp, val);
+  }
+
+  /* promise-based number prompt (used by tools that need a length, angle or factor) */
+  function promptNumber({ title: t, label, value = '', unit = '' }) {
+    return new Promise(resolve => {
+      const modal = document.getElementById('modal');
+      const input = h('input', { type: 'number', step: 'any', value, class: 'prompt-input', 'aria-label': label });
+      const close = v => { modal.classList.remove('open'); modal.innerHTML = ''; resolve(v); };
+      const ok = () => { const n = parseFloat(input.value); close(Number.isFinite(n) ? n : null); };
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') close(null); e.stopPropagation(); });
+      modal.innerHTML = '';
+      modal.append(h('div', { class: 'modal-card', role: 'dialog' },
+        h('h3', { text: t }),
+        h('div', { class: 'prompt-row' }, h('label', { text: label }), input, unit ? h('span', { class: 'prompt-unit', text: unit }) : null),
+        h('div', { class: 'btn-row' },
+          h('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: () => close(null) }),
+          h('button', { class: 'btn primary', type: 'button', text: 'OK', onclick: ok }))));
+      modal.classList.add('open');
+      modal.onclick = e => { if (e.target === modal) close(null); };
+      setTimeout(() => { input.focus(); input.select(); }, 0);
+    });
   }
 
   /* row of preset colours + a "+" button that opens the colour picker */
@@ -166,11 +200,11 @@
     return h('div', {}, h('div', { class: 'swatches' }, ...btns, custom), holder);
   }
 
-  /* grid of icon buttons (shapes, patterns, geometry tools …) */
+  /* grid of icon buttons (shapes, patterns, geometry tools …); labels:true shows the name under each icon */
   function grid({ items, value, cols = 5, onPick, labels = false }) {
-    return h('div', { class: 'opt-grid', style: { '--cols': cols } }, ...items.map(it =>
+    return h('div', { class: 'opt-grid' + (labels ? ' labelled' : ''), style: { '--cols': cols } }, ...items.map(it =>
       h('button', { class: 'opt' + (it.id === value ? ' active' : ''), type: 'button', title: it.name || it.label || '', onclick: () => onPick(it.id) },
-        h('span', { html: ICONS[it.icon] || '' }), labels ? h('span', { text: it.label || it.name }) : null)));
+        h('span', { class: 'opt-ico', html: ICONS[it.icon] || '' }), labels ? h('span', { class: 'opt-name', text: it.label || it.name }) : null)));
   }
 
   /* vertical list of wide option buttons (selection modes …) */
@@ -196,5 +230,5 @@
     });
   }
 
-  window.UI = { h, hydrateIcons, clamp, normHex, hexToRgb, luminance, colorPicker, title, section, slider, swatches, grid, list, confirm: confirmDialog };
+  window.UI = { h, hydrateIcons, clamp, normHex, hexToRgb, luminance, colorPicker, title, section, slider, swatches, grid, list, confirm: confirmDialog, prompt: promptNumber };
 })();

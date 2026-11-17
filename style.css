@@ -7,7 +7,7 @@
 :root {
   --navy: #000455;
   --navy-soft: #1c2080;
-  --lav: #E0E2FF;          /* toolbar / chips background */
+  --lav: #E3E4FF;          /* toolbar / chips background */
   --lav-soft: #F0F1F8;     /* sidebar header */
   --lav-line: #CBCFF5;     /* thin borders */
   --muted: #6a6e96;
@@ -39,82 +39,97 @@ canvas { position: absolute; left: 0; top: 0; }
 #textLayer { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
 
 /* ---------- 4. Buttons ---------- */
-/* small white rounded square button (undo, redo, +, …) */
+/* Icons marked data-exact are placed at the exact size/offset taken from the design,
+   so every button that holds one is position:relative. */
+/* small white square button (undo, redo, +, …): 36x36, radius 5 */
 .sq-btn {
-  width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: #fff;
-  display: grid; place-items: center; color: var(--navy); box-shadow: var(--shadow);
+  position: relative; width: 36px; height: 36px; flex: none; border: 0; border-radius: 5px; background: #fff;
+  display: block; padding: 0; color: var(--navy); box-shadow: 0 0 6px rgba(0, 0, 0, .25);
 }
-.sq-btn svg { width: 20px; height: 20px; }
+.sq-btn svg { width: 20px; height: 20px; margin: 8px; }
+.sq-btn [data-icon] svg { width: 100%; height: 100%; margin: 0; }
 .sq-btn:disabled { opacity: .4; cursor: default; }
 .sq-btn:not(:disabled):active { transform: scale(.94); }
 
-/* top-left menu button */
+/* top-left menu button (40x40) */
 .float-btn {
-  position: absolute; left: 17px; top: 17px; z-index: 20; width: 40px; height: 40px;
-  border: 0; border-radius: 12px; background: var(--lav); color: var(--navy);
-  display: grid; place-items: center; box-shadow: var(--shadow);
+  position: absolute; left: 20px; top: 20px; z-index: 20; width: 40px; height: 40px; padding: 0;
+  border: 0; border-radius: 10px; background: var(--lav); color: var(--navy); box-shadow: 0 0 6px rgba(0, 0, 0, .25);
 }
-.float-btn svg { width: 22px; height: 22px; }
+.float-btn [data-icon] svg, .icon-btn [data-icon] svg, .tool-btn [data-icon] svg, .sb-item .ico [data-icon] svg { width: 100%; height: 100%; }
 
-.icon-btn { width: 32px; height: 32px; border: 0; background: none; color: var(--navy); display: grid; place-items: center; border-radius: 8px; }
-.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn { position: relative; width: 40px; height: 40px; border: 0; background: none; color: var(--navy); border-radius: 8px; padding: 0; flex: none; }
 
-/* ---------- 5. Bottom bars ---------- */
+/* ---------- 5. Bottom bars (sizes measured from the design) ---------- */
 .bar {
   position: absolute; bottom: 0; z-index: 20; background: var(--lav);
-  display: flex; align-items: center; gap: 6px; padding: 10px;
-  box-shadow: 0 -2px 10px rgba(0, 4, 85, .12);
+  display: flex; align-items: center; box-shadow: inset 0 0 6px rgba(0, 0, 0, .25);
 }
-#toolBar { left: 0; border-top-right-radius: 14px; }
-#boardBar { right: 0; border-top-left-radius: 14px; gap: 8px; }
+/* tool bar: 646 x 90 — nine 60x64 buttons, 10px apart, 13px padding */
+#toolBar { left: 0; height: 90px; padding: 0 13px; gap: 10px; border-top-right-radius: 10px; box-shadow: inset 0 0 4px rgba(0, 0, 0, .25); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+#toolBar::-webkit-scrollbar { display: none; }
+/* board bar: 481 x 60 */
+#boardBar { right: 0; height: 60px; padding: 0 10px; gap: 10px; border-top-left-radius: 10px; }
 
+/* each tool button is a 60x64 card; .tb-in holds icon + label at the design's offsets */
 .tool-btn {
-  width: 56px; height: 58px; border: 0; border-radius: 11px; background: #fff; color: var(--navy);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  font: 500 11px var(--font-ui); box-shadow: var(--shadow);
+  position: relative; flex: none; width: 60px; height: 64px; border: 0; border-radius: 10px; background: #fff; color: var(--navy);
+  padding: 0; box-shadow: 0 0 6px rgba(0, 0, 0, .25); transition: transform .12s;
 }
-.tool-btn svg { width: 26px; height: 26px; }
-.tool-btn.active { background: var(--navy); color: #fff; }
+.tb-in { position: absolute; left: 0; top: 0; width: 60px; height: 64px; transform-origin: 0 0; }
+.tb-label { position: absolute; left: 0; right: 0; top: 42px; text-align: center; font: 500 12px/12px 'Quicksand', system-ui, sans-serif; white-space: nowrap; }
+.tool-btn.active { background: var(--navy); color: #fff; transform: translateY(-3px); }   /* the active tool is lifted 3px */
 
-.divider { width: 2px; height: 36px; background: var(--navy); border-radius: 2px; margin: 0 2px; }
+.divider { width: 2px; height: 40px; background: var(--navy); border-radius: 2px; margin: 0 9px; flex: none; }
 .board-label {
-  width: 144px; height: 36px; border-radius: 10px; background: #fff; display: grid; place-items: center;
-  font: 400 15px var(--font-digits); letter-spacing: .06em; box-shadow: var(--shadow); white-space: pre;
+  width: 155px; height: 36px; flex: none; border-radius: 5px; background: #fff; display: grid; place-items: center;
+  font: 400 18px var(--font-digits); box-shadow: 0 0 6px rgba(0, 0, 0, .25); white-space: pre; overflow: hidden;
 }
 
-/* ---------- 6. Option dialogs (popovers) ---------- */
-.popover {
-  position: absolute; z-index: 30; display: none; width: min(330px, calc(100vw - 20px)); overflow: auto;
-  background: #fff; border: 1px solid var(--lav-line); border-radius: 18px; padding: 14px 16px 16px;
-  box-shadow: var(--shadow-lg);
-}
+/* ---------- 6. Option dialogs: a white speech bubble with an INNER shadow and a tail ---------- */
+.popover { position: absolute; z-index: 30; display: none; width: min(330px, calc(100vw - 20px)); padding-bottom: 18px; }
+.popover.narrow { width: 200px; }
+.popover.wide { width: min(380px, calc(100vw - 20px)); }
 .popover.open { display: block; }
-.pop-title { font: 700 15px var(--font-ui); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
-.pop-title svg { width: 20px; height: 20px; }
-.pop-sec { margin-bottom: 14px; }
+.pop-body {
+  position: relative; overflow: auto; overflow-x: hidden; padding: 20px 30px; background: #fff; border-radius: 20px;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, .25);          /* the inner shadow from the design */
+}
+.popover:not(.narrow) .pop-body { padding: 20px 22px; }
+.pop-tail {                                              /* little triangle pointing at the tool button */
+  position: absolute; bottom: 1px; width: 0; height: 0; margin-left: -9px;
+  border: 9px solid transparent; border-top: 17px solid #fff; border-bottom: 0;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .3));
+}
+.pop-sec { margin-bottom: 15px; }
 .pop-sec:last-child { margin-bottom: 0; }
-.pop-label { font: 700 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+/* section labels: Parkinsans Medium 12px, 2px letter-spacing */
+.pop-label { font: 500 12px 'Parkinsans', var(--font-ui); letter-spacing: 2px; text-transform: uppercase; color: var(--navy); margin-bottom: 15px; }
 .pop-note { font: 500 12px var(--font-ui); color: var(--muted); line-height: 1.4; }
 
-/* slider */
+/* slider: navy filled track, white round thumb (fill drawn from --p set by ui.js) */
 .slider-row { display: flex; align-items: center; gap: 12px; }
 .slider-val { min-width: 46px; text-align: right; font: 400 13px var(--font-digits); }
-input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 6px; border-radius: 6px; background: var(--lav); outline: none; margin: 0; }
-input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--navy); border: 3px solid #fff; box-shadow: 0 0 0 1px var(--navy); cursor: pointer; }
-input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--navy); border: 3px solid #fff; box-shadow: 0 0 0 1px var(--navy); cursor: pointer; }
+.popover:not(.pop-text) .slider-val { display: none; }          /* only the Text dialog shows a number */
+input[type=range] {
+  -webkit-appearance: none; appearance: none; flex: 1; height: 17px; margin: 0; outline: none; cursor: pointer;
+  background: linear-gradient(var(--navy), var(--navy)) 0 50% / var(--p, 50%) 5px no-repeat, linear-gradient(var(--lav), var(--lav)) 0 50% / 100% 5px no-repeat;
+  border-radius: 6px;
+}
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 17px; height: 17px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 4px rgba(0, 0, 0, .45); }
+input[type=range]::-moz-range-thumb { width: 17px; height: 17px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 4px rgba(0, 0, 0, .45); }
+input[type=range]::-moz-range-track { background: transparent; }
 
-/* live stroke preview */
-.stroke-preview { height: 46px; border-radius: 12px; background: var(--lav-soft); display: grid; place-items: center; overflow: hidden; }
-.stroke-preview span { display: block; width: 78%; border-radius: 99px; max-height: 40px; }
-.eraser-preview { height: 90px; }
-.eraser-preview span { border-radius: 50%; border: 2px dashed var(--navy); background: rgba(255,255,255,.7); width: 20px; height: 20px; max-width: 84px; max-height: 84px; }
-
-/* colour swatches */
-.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 9px; }
-.sw { aspect-ratio: 1; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--lav-line); padding: 0; display: grid; place-items: center; }
-.sw.active { box-shadow: 0 0 0 2.5px var(--navy); }
-.sw-custom { background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); color: #fff; }
-.sw-custom svg { width: 14px; height: 14px; filter: drop-shadow(0 0 2px rgba(0,0,0,.6)); }
+/* colour swatches: 20px circles, 10px apart, five per row; the chosen one shows a white tick */
+.swatches { display: grid; grid-template-columns: repeat(5, 20px); gap: 10px; }
+.sw { width: 20px; height: 20px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.sw.active:not(.sw-custom)::after {
+  content: ''; width: 10px; height: 10px; background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.5 5.2 4 7.7 8.5 2.6' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, .6));
+}
+.sw-custom { background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+.sw-custom svg { width: 8px; height: 8px; filter: drop-shadow(0 0 1px rgba(0, 0, 0, .7)); color: #fff; }
+.sw-custom.active { box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--navy); }
 
 /* figma-like colour picker */
 .cp { margin-top: 12px; padding: 10px; border-radius: 14px; background: var(--lav-soft); }
@@ -130,13 +145,18 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 .cp-eye svg { width: 18px; height: 18px; }
 
 /* option grids (shapes, patterns, geometry tools …) */
-.opt-grid { display: grid; grid-template-columns: repeat(var(--cols, 5), 1fr); gap: 6px; }
+.opt-grid { display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); gap: 6px; }
 .opt {
   min-height: 44px; border: 1px solid var(--lav-line); background: #fff; color: var(--navy); border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px;
   font: 600 10px var(--font-ui); text-align: center; line-height: 1.1;
 }
 .opt svg { width: 22px; height: 22px; }
+.opt-ico { display: grid; place-items: center; }
+.opt-grid.labelled { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+.opt-grid.labelled .opt { min-height: 58px; font-size: 9.5px; gap: 3px; }
+.opt-grid.labelled .opt-name { max-width: 100%; overflow-wrap: anywhere; }
+.opt.wide .opt-ico, .opt.wide > span:first-child { display: grid; }
 .opt.active { background: var(--navy); border-color: var(--navy); color: #fff; }
 .opt.wide { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 8px 12px; font-size: 13px; min-height: 40px; }
 .opt-list { display: grid; gap: 6px; }
@@ -155,16 +175,12 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 .font-item.active { background: var(--navy); color: #fff; }
 .font-sample { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--lav-soft); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-/* zoom controls (Move dialog) */
-.zoom-row { display: flex; align-items: center; gap: 8px; }
-.zoom-row .sq-btn { box-shadow: none; border: 1px solid var(--lav-line); }
-.zoom-row .zoom-reset { flex: 1; height: 36px; border-radius: 10px; border: 1px solid var(--lav-line); background: #fff; font: 400 15px var(--font-digits); }
-
 /* ---------- 7. Zoom badge, hint, selection bar ---------- */
+/* zoom percentage: bottom centre, just above the bars, Quicksand */
 #zoomBadge {
-  position: absolute; left: 50%; top: 22px; z-index: 40; transform: translate(-50%, -8px);
-  padding: 8px 18px; border-radius: 99px; background: var(--navy); color: #fff; font: 400 15px var(--font-digits);
-  letter-spacing: .06em; box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+  position: absolute; left: 50%; bottom: 104px; z-index: 40; transform: translate(-50%, 8px);
+  padding: 6px 16px; border-radius: 99px; background: var(--navy); color: #fff; font: 600 14px 'Quicksand', system-ui, sans-serif;
+  box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
 }
 #zoomBadge.show { opacity: 1; transform: translate(-50%, 0); }
 
@@ -203,22 +219,22 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 body.sb-open #scrim { opacity: 1; pointer-events: auto; }
 
 #sidebar {
-  position: fixed; left: 0; top: 0; bottom: 0; z-index: 60; width: 307px; max-width: 86vw; background: #fff;
+  position: fixed; left: 0; top: 0; bottom: 0; z-index: 60; width: 330px; max-width: 90vw; background: #fff;
   border-radius: 0 22px 22px 0; box-shadow: 6px 0 30px rgba(0, 4, 85, .2); display: flex; flex-direction: column; overflow: hidden;
   transform: translateX(-105%); transition: transform .28s cubic-bezier(.3, .8, .3, 1);
 }
 body.sb-open #sidebar { transform: none; }
 
-.sb-head { display: flex; align-items: flex-start; justify-content: space-between; height: 111px; padding: 24px 18px 0 20px; background: var(--lav-soft); }
-.sb-head .logo { height: 56px; width: auto; }
+.sb-head { display: flex; align-items: flex-start; justify-content: space-between; position: relative; height: 119px; padding: 0; background: #F1F2F8; }
+.sb-head .logo { position: absolute; left: 10px; top: 10px; width: 173.5px; height: 91.4px; filter: url(#logoInk); }
+.sb-head .icon-btn { position: absolute; right: 18px; top: 20px; }
 .sb-body { padding: 18px 9px; overflow: auto; }
 .sb-label { margin: 6px 15px 8px; font: 600 12px var(--font-side); color: var(--muted); }
 .sb-item {
   width: 100%; display: flex; align-items: center; gap: 12px; padding: 9px 12px; margin-bottom: 4px; border: 0; border-radius: 15px;
   background: none; color: var(--navy); text-align: left; font-family: var(--font-side);
 }
-.sb-item .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--lav-soft); display: grid; place-items: center; flex: none; }
-.sb-item .ico svg { width: 19px; height: 19px; }
+.sb-item .ico { position: relative; width: 38px; height: 38px; border-radius: 10px; background: #F1F2F8; flex: none; }
 .sb-item .txt { display: flex; flex-direction: column; gap: 1px; }
 .sb-item b { font-weight: 700; font-size: 14px; }
 .sb-item small { font-size: 11px; color: var(--muted); }
@@ -235,19 +251,30 @@ body.sb-open #sidebar { transform: none; }
 .modal-card p { margin: 0 0 20px; font: 500 14px var(--font-ui); color: var(--muted); line-height: 1.45; }
 .modal-card .btn-row { justify-content: flex-end; }
 
+/* number prompt (length / angle / factor for geometry tools) */
+.prompt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font: 600 14px var(--font-ui); }
+.prompt-input { flex: 1; min-width: 0; height: 38px; border: 0; border-radius: 10px; padding: 0 12px; font: 400 16px var(--font-digits); color: var(--navy); box-shadow: inset 0 0 6px rgba(0, 0, 0, .25); outline: none; }
+.prompt-unit { font: 600 14px var(--font-ui); color: var(--muted); }
+
 /* ---------- 11. Graph placeholder (phase 2) ---------- */
 .placeholder { height: 100%; display: grid; place-content: center; text-align: center; color: var(--navy); }
 .placeholder h2 { margin: 0 0 6px; font: 700 22px var(--font-ui); }
 .placeholder p { margin: 0; color: var(--muted); }
 
-/* ---------- 12. Phones ---------- */
-@media (max-width: 760px) {
-  /* bars stack: board bar above, tools bar along the bottom edge */
-  #toolBar { left: 0; right: 0; bottom: 0; gap: 4px; padding: 6px 4px; border-radius: 0; justify-content: space-between; }
-  .tool-btn { flex: 1; min-width: 0; width: auto; height: 50px; font-size: 8px; letter-spacing: -.2px; padding: 0; gap: 3px; border-radius: 9px; overflow: hidden; }
-  .tool-btn svg { width: 22px; height: 22px; }
-  #boardBar { left: 14px; right: 14px; bottom: 64px; border-radius: 16px; padding: 8px; justify-content: space-between; gap: 6px; box-shadow: var(--shadow); }
-  .divider { display: none; }
-  .board-label { flex: 1; width: auto; min-width: 0; font-size: 12px; letter-spacing: .02em; overflow: hidden; }
-  .sq-btn { width: 34px; height: 34px; }
+/* ---------- 12. Phone layout ----------
+   Used on every screen narrower than the two bars side by side (646 + 481 = 1127px).
+   Tool bar: 393x48 (the desktop buttons scaled to 0.6), board bar: 371x48 sitting 10px above it. */
+@media (max-width: 1126px) {
+  #toolBar { left: 50%; transform: translateX(-50%); width: min(393px, 100vw); height: 48px; padding: 0 18px; gap: 4px; border-radius: 0; justify-content: flex-start; box-shadow: inset 0 0 4px rgba(0, 0, 0, .25); }
+  .tool-btn { width: 36px; height: 38.4px; border-radius: 6px; }
+  .tb-in { transform: scale(.6); }
+  .tool-btn.active { transform: translateY(-2px); }
+  #boardBar { left: 50%; right: auto; transform: translateX(-50%); bottom: 58px; width: min(371px, calc(100vw - 20px)); height: 48px; padding: 0 10px; gap: 6px; border-radius: 10px; justify-content: space-between; }
+  .sq-btn { width: 26px; height: 26px; border-radius: 4px; }
+  .sq-btn [data-icon] { zoom: .7222; }
+  .divider { height: 30px; margin: 0 2px; }
+  .board-label { width: auto; flex: 1; min-width: 0; height: 26px; font-size: 13px; border-radius: 4px; }
+  #zoomBadge { bottom: 118px; }
+  .float-btn { left: 14px; top: 14px; }
 }
+body:not(.sb-open) #sidebar { box-shadow: none; }

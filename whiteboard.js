@@ -33,14 +33,14 @@
   const ov = ovCanvas.getContext('2d');
   const mctx = document.createElement('canvas').getContext('2d');   // scratch context for measuring text
   const instLayer = $('#instruments'), textLayer = $('#textLayer');
-  const popover = $('#popover'), selBar = $('#selBar'), hintEl = $('#hint'), zoomBadge = $('#zoomBadge');
+  const popover = $('#popover'), popBody = $('#popover .pop-body'), popTail = $('#popover .pop-tail'), selBar = $('#selBar'), hintEl = $('#hint'), zoomBadge = $('#zoomBadge');
   const toolBar = $('#toolBar'), boardBar = $('#boardBar'), boardLabel = $('#boardLabel');
   const undoBtn = $('#undoBtn'), redoBtn = $('#redoBtn'), prevBtn = $('#prevBoard'), nextBtn = $('#nextBoard');
 
   /* ---------------------------------------------------------
      2. Options offered in the dialogs
      --------------------------------------------------------- */
-  const COLORS = ['#000000', '#000455', '#E53935', '#FB8C00', '#FDD835', '#43A047', '#1E88E5', '#8E24AA', '#EC407A', '#757575', '#FFFFFF'];
+  const COLORS = ['#000000', '#000455', '#E53935', '#FB8C00', '#FDD835', '#43A047', '#1E88E5', '#8E24AA', '#EC407A'];
   const BACKDROP_COLORS = ['#FFFFFF', '#FFF8E1', '#F1F3F4', '#E3F2FD', '#E8F5E9', '#FCE4EC', '#0B0F2F', '#111111'];
   const FONTS = ['Times New Roman', 'Quicksand', 'Anta', 'Anton', 'Inter', 'Parkinsans', 'Roboto', 'Poppins', 'Montserrat', 'Raleway', 'Lato',
     'Oswald', 'Bebas Neue', 'Space Grotesk', 'Playfair Display', 'Merriweather', 'Lobster', 'Pacifico', 'Caveat', 'Dancing Script', 'Roboto Mono'];
@@ -69,7 +69,7 @@
   const state = {
     tool: 'pen',
     pen: { size: 4, color: '#000455' },
-    eraser: { size: 24 },
+    eraser: { size: 24, mode: 'normal' },          // mode: normal | select
     select: { mode: 'free' },
     shape: { kind: 'line', size: 3, color: '#000455', dash: 'solid' },
     text: { font: 'Quicksand', size: 28, color: '#000455' },
@@ -132,14 +132,12 @@
   }
   const zoomBy = f => zoomAt(board().s * f, { x: W / 2, y: H / 2 });
 
-  let zoomTimer = 0, zoomLabelEl = null;
+  let zoomTimer = 0;
   function showZoom() {
-    const label = Math.round(board().s * 100) + '%';
-    zoomBadge.textContent = label;
+    zoomBadge.textContent = Math.round(board().s * 100) + '%';
     zoomBadge.classList.add('show');
     clearTimeout(zoomTimer);
     zoomTimer = setTimeout(() => zoomBadge.classList.remove('show'), 1300);
-    if (zoomLabelEl && zoomLabelEl.isConnected) zoomLabelEl.textContent = label;
   }
 
   /* ---------------------------------------------------------
@@ -220,9 +218,17 @@
   /* ---------------------------------------------------------
      6. Drawing one object (used for the real canvas AND previews)
      --------------------------------------------------------- */
+  const imgCache = new Map();                       // loaded <img> elements, by data URL
+  function getImage(src) {
+    let im = imgCache.get(src);
+    if (!im) { im = new Image(); im.onload = () => requestRender(); im.src = src; imgCache.set(src, im); }
+    return im;
+  }
+
   function drawObject(c, o) {
     c.save();
     c.globalCompositeOperation = o.erase ? 'destination-out' : 'source-over';
+    if (o.hidden) c.globalAlpha = 0.25;              // hidden objects only show (faintly) while the Show/Hide tool is active
     c.strokeStyle = c.fillStyle = o.color || '#000';
     c.lineWidth = o.size || 2;
     c.lineCap = 'round'; c.lineJoin = 'round';
@@ -249,7 +255,7 @@
       case 'dot': {
         c.beginPath(); c.arc(o.x, o.y, Math.max(4, o.size) - .5, 0, TAU);
         c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#fff'; c.stroke();
-        if (o.label) {
+        if (o.label && !o.labelHidden) {
           ensureFont('Quicksand', 15);
           c.fillStyle = o.color; c.font = '700 15px Quicksand, sans-serif'; c.textBaseline = 'alphabetic';
           c.fillText(o.label, o.x + 8, o.y - 9);
@@ -262,10 +268,23 @@
         const p1 = o.ext === 'line' ? { x: o.a.x - u.x * BIG, y: o.a.y - u.y * BIG } : o.a;
         const p2 = o.ext === 'none' ? o.b : { x: o.b.x + u.x * BIG, y: o.b.y + u.y * BIG };
         c.beginPath(); c.moveTo(p1.x, p1.y); c.lineTo(p2.x, p2.y); c.stroke();
+        if (o.arrow) { c.setLineDash([]); arrowHead(c, o.a, o.b, o.size); }      // vectors have an arrow head
         break;
       }
       case 'circle': c.beginPath(); c.arc(o.cx, o.cy, Math.max(o.r, .1), 0, TAU); c.stroke(); break;
       case 'arc': c.beginPath(); c.arc(o.cx, o.cy, Math.max(o.r, .1), o.a0, o.a1, !!o.ccw); c.stroke(); break;
+      case 'sector': {
+        c.beginPath(); c.moveTo(o.cx, o.cy); c.arc(o.cx, o.cy, Math.max(o.r, .1), o.a0, o.a1, !!o.ccw); c.closePath();
+        const a = c.globalAlpha; c.globalAlpha = a * 0.08; c.fill(); c.globalAlpha = a; c.stroke();
+        break;
+      }
+      case 'curve': {                                                              // ellipse, hyperbola, parabola, polyline
+        c.beginPath();
+        o.paths.forEach(pp => { pp.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); if (o.closed) c.closePath(); });
+        c.stroke();
+        break;
+      }
+      case 'image': { const im = getImage(o.src); if (im.complete && im.naturalWidth) c.drawImage(im, o.x, o.y, o.w, o.h); break; }
       case 'poly': {
         c.beginPath(); o.pts.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.closePath();
         c.globalAlpha = 0.08; c.fill(); c.globalAlpha = 1; c.stroke();
@@ -318,7 +337,9 @@
       case 'text': { const m = measureText(o); return { x0: o.x, y0: o.y, x1: o.x + m.w, y1: o.y + m.h }; }
       case 'dot': return box([o.x], [o.y], 9);
       case 'seg': return box([o.a.x, o.b.x], [o.a.y, o.b.y], 3);
-      case 'circle': case 'arc': return box([o.cx - o.r, o.cx + o.r], [o.cy - o.r, o.cy + o.r], 2);
+      case 'circle': case 'arc': case 'sector': return box([o.cx - o.r, o.cx + o.r], [o.cy - o.r, o.cy + o.r], 2);
+      case 'curve': { const xs = [], ys = []; o.paths.forEach(pp => pp.forEach(p => { xs.push(p.x); ys.push(p.y); })); return box(xs, ys, 2); }
+      case 'image': return { x0: o.x, y0: o.y, x1: o.x + o.w, y1: o.y + o.h };
       case 'poly': return box(o.pts.map(p => p.x), o.pts.map(p => p.y), 2);
       case 'label': return { x0: o.x, y0: o.y - o.fs, x1: o.x + o.text.length * o.fs * 0.62, y1: o.y + 4 };
     }
@@ -331,6 +352,7 @@
     const centre = { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 };
     switch (o.type) {
       case 'stroke': return o.pts;
+      case 'curve': return o.paths.flat();
       case 'seg': return [o.a, o.b, { x: (o.a.x + o.b.x) / 2, y: (o.a.y + o.b.y) / 2 }];
       case 'poly': return [...o.pts, centre];
       case 'shape': return [o.a, o.b, centre];
@@ -344,8 +366,9 @@
     switch (n.type) {
       case 'stroke': case 'poly': n.pts.forEach(mv); break;
       case 'shape': case 'seg': mv(n.a); mv(n.b); break;
-      case 'text': case 'dot': case 'label': mv(n); break;
-      case 'circle': case 'arc': n.cx += dx; n.cy += dy; break;
+      case 'text': case 'dot': case 'label': case 'image': mv(n); break;
+      case 'curve': n.paths.forEach(pp => pp.forEach(mv)); break;
+      case 'circle': case 'arc': case 'sector': n.cx += dx; n.cy += dy; break;
     }
     return n;
   }
@@ -417,7 +440,9 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     worldView(ctx);
+    const showHidden = state.tool === 'tools' && state.geo.tool === 'hide';
     for (const o of b.objects) {
+      if (o.hidden && !showHidden) continue;
       const moved = drag && drag.type === 'move' && sel.includes(o);
       if (moved) { ctx.save(); ctx.translate(drag.dx, drag.dy); }
       drawObject(ctx, o);
@@ -462,7 +487,7 @@
 
     // things in screen space (not zoomed)
     screenView(ov);
-    if (state.tool === 'eraser' && hover) {
+    if (state.tool === 'eraser' && state.eraser.mode === 'normal' && hover) {
       ov.save();
       ov.beginPath(); ov.arc(hover.x, hover.y, (state.eraser.size * b.s) / 2, 0, TAU);
       ov.fillStyle = 'rgba(255,255,255,.45)'; ov.fill();
@@ -597,7 +622,7 @@
      11. Pointer handling
      --------------------------------------------------------- */
   function setCursor() {
-    const c = { pen: 'crosshair', eraser: 'none', move: 'grab', select: 'crosshair', shapes: 'crosshair', text: 'text', tools: state.geo.tool ? 'crosshair' : 'default' };
+    const c = { pen: 'crosshair', eraser: state.eraser.mode === 'normal' ? 'none' : 'crosshair', move: 'grab', select: 'crosshair', shapes: 'crosshair', text: 'text', backdrop: 'default', tools: state.geo.tool ? 'crosshair' : 'default' };
     ovCanvas.style.cursor = c[state.tool] || 'default';
   }
 
@@ -613,7 +638,12 @@
     const w = toWorld(s), b = board();
 
     switch (state.tool) {
-      case 'pen': case 'eraser': startStroke(w); break;
+      case 'pen': startStroke(w); break;
+      case 'eraser':                                         // normal eraser rubs out; "select & erase" draws a loop
+        if (state.eraser.mode === 'select') drag = { type: 'region', mode: 'free', start: w, cur: w, pts: [w], erase: true };
+        else startStroke(w);
+        break;
+      case 'backdrop': break;                                // the Backdrop tool only opens its dialog
       case 'move': drag = { type: 'pan', sx: s.x, sy: s.y, ox: b.ox, oy: b.oy }; ovCanvas.style.cursor = 'grabbing'; break;
       case 'select': selectDown(w); break;
       case 'shapes': drag = { type: 'shape', a: w, b: w }; break;
@@ -667,6 +697,11 @@
         } else requestOverlay();
         break;
       case 'region': {
+        if (d.erase) {                                       // select & erase: delete everything inside the loop
+          const gone = new Set(selectInRegion(d));
+          if (gone.size) commit(b.objects.filter(o => !gone.has(o))); else requestRender();
+          break;
+        }
         sel = Math.hypot((d.cur || d.pts[d.pts.length - 1]).x - d.start.x, (d.cur || d.pts[d.pts.length - 1]).y - d.start.y) * b.s < 4 && d.mode !== 'free' ? [] : selectInRegion(d);
         requestRender();
         break;
@@ -1053,7 +1088,6 @@
     select() {
       const modes = [{ id: 'free', icon: 'lasso', label: 'Free-form' }, { id: 'rect', icon: 'rectsel', label: 'Rectangle' }, { id: 'ellipse', icon: 'ellipsel', label: 'Ellipse' }];
       return h('div', {},
-        title('Select', 'select'),
         section('Selection shape', UI.list({ items: modes, value: state.select.mode, onPick: id => { state.select.mode = id; rerenderPopover(); } })),
         section('', h('div', { class: 'btn-row' }, h('button', { class: 'btn', type: 'button', html: ICONS.rectsel + '<span>Select all</span>', onclick: () => {
           sel = board().objects.filter(o => !o.erase); closePopover(); requestRender();
@@ -1061,49 +1095,27 @@
         h('div', { class: 'pop-note', text: 'Draw around objects to select them, then drag to move. Use the buttons that appear to duplicate or delete.' }));
     },
 
-    move() {
-      zoomLabelEl = h('button', { class: 'zoom-reset', type: 'button', title: 'Reset to 100%', text: Math.round(board().s * 100) + '%', onclick: () => zoomAt(1, { x: W / 2, y: H / 2 }) });
-      return h('div', {},
-        title('Move & zoom', 'move'),
-        section('Zoom', h('div', { class: 'zoom-row' },
-          h('button', { class: 'sq-btn', type: 'button', html: ICONS.minus, title: 'Zoom out', onclick: () => zoomBy(1 / 1.25) }),
-          zoomLabelEl,
-          h('button', { class: 'sq-btn', type: 'button', html: ICONS.plus, title: 'Zoom in', onclick: () => zoomBy(1.25) }))),
-        h('div', { class: 'pop-note', text: 'Drag the board to move it. Scroll, pinch, or press Ctrl + / Ctrl − to zoom.' }));
-    },
-
+    /* Pen dialog: colour swatches first, then size (no preview, as in the design) */
     pen() {
-      const prev = h('span');
-      const upd = () => { prev.style.height = state.pen.size + 'px'; prev.style.background = state.pen.color; };
-      upd();
       return h('div', {},
-        title('Pen', 'pen'),
-        section('Preview', h('div', { class: 'stroke-preview' }, prev)),
-        section('Thickness', UI.slider({ min: 1, max: 40, value: state.pen.size, unit: ' px', onInput: v => { state.pen.size = v; upd(); } })),
-        section('Colour', UI.swatches({ colors: COLORS, value: state.pen.color, onPick: c => { state.pen.color = c; upd(); } })));
+        section('Colour', UI.swatches({ colors: COLORS, value: state.pen.color, onPick: c => { state.pen.color = c; } })),
+        section('Size', UI.slider({ min: 1, max: 40, value: state.pen.size, unit: '', onInput: v => { state.pen.size = v; } })));
     },
 
+    /* Eraser dialog: two modes; size only matters for the normal eraser */
     eraser() {
-      const prev = h('span');
-      const upd = () => { prev.style.width = prev.style.height = state.eraser.size + 'px'; };
-      upd();
+      const modes = [{ id: 'normal', icon: 'eraser', label: 'Eraser' }, { id: 'select', icon: 'lasso', label: 'Select & erase' }];
       return h('div', {},
-        title('Eraser', 'eraser'),
-        section('Preview', h('div', { class: 'stroke-preview eraser-preview' }, prev)),
-        section('Size', UI.slider({ min: 4, max: 100, value: state.eraser.size, unit: ' px', onInput: v => { state.eraser.size = v; upd(); } })),
-        h('div', { class: 'pop-note', text: 'Rub over a drawing to erase only the part under the eraser.' }));
+        section('Mode', UI.list({ items: modes, value: state.eraser.mode, onPick: id => { state.eraser.mode = id; setCursor(); rerenderPopover(); } })),
+        state.eraser.mode === 'normal' ? section('Size', UI.slider({ min: 4, max: 100, value: state.eraser.size, unit: '', onInput: v => { state.eraser.size = v; } })) : null);
     },
 
     shapes() {
-      const prev = h('span');
-      const upd = () => { prev.style.height = state.shape.size + 'px'; prev.style.background = state.shape.color; };
-      upd();
       return h('div', {},
-        title('Shapes', 'shapes'),
-        section('Shape', UI.grid({ items: SHAPES, value: state.shape.kind, cols: 6, onPick: id => { state.shape.kind = id; rerenderPopover(); } })),
+                section('Shape', UI.grid({ items: SHAPES, value: state.shape.kind, cols: 6, onPick: id => { state.shape.kind = id; rerenderPopover(); } })),
         section('Line style', UI.grid({ items: LINE_STYLES, value: state.shape.dash, cols: 3, onPick: id => { state.shape.dash = id; rerenderPopover(); } })),
-        section('Thickness', UI.slider({ min: 1, max: 20, value: state.shape.size, unit: ' px', onInput: v => { state.shape.size = v; upd(); } })),
-        section('Colour', UI.swatches({ colors: COLORS, value: state.shape.color, onPick: c => { state.shape.color = c; upd(); } })));
+        section('Thickness', UI.slider({ min: 1, max: 20, value: state.shape.size, unit: '', onInput: v => { state.shape.size = v; } })),
+        section('Colour', UI.swatches({ colors: COLORS, value: state.shape.color, onPick: c => { state.shape.color = c; } })));
     },
 
     tools() {
@@ -1115,11 +1127,10 @@
       const active = Geo.byId[state.geo.tool];
       const geoBlocks = Geo.GROUPS.map(gr => h('div', {},
         h('div', { class: 'geo-group', text: gr }),
-        UI.grid({ items: Geo.TOOLS.filter(t => t.group === gr), value: state.geo.tool, cols: 5, onPick: id => setGeoTool(id) })));
+        UI.grid({ items: Geo.TOOLS.filter(t => t.group === gr), value: state.geo.tool, cols: 4, labels: true, onPick: id => setGeoTool(id) })));
 
       return h('div', {},
-        title('Tools', 'wrench'),
-        section('Instruments', inst, h('div', { class: 'pop-note', style: { marginTop: '8px' }, text: 'Drag the round handles to move, rotate or remove an instrument. Swing the compass hinge to draw an arc.' })),
+                section('Instruments', inst, h('div', { class: 'pop-note', style: { marginTop: '8px' }, text: 'Drag the round handles to move, rotate or remove an instrument. Swing the compass hinge to draw an arc.' })),
         section('Geometry', ...geoBlocks),
         active && active.usesSides ? section('Number of sides', UI.slider({ min: 3, max: 12, value: state.geo.sides, onInput: v => { state.geo.sides = v; } })) : null,
         active ? h('div', { class: 'hint-line', text: active.name + ' — ' + active.hint }) : h('div', { class: 'hint-line', text: 'Pick a geometry tool, then click on the board.' }));
@@ -1134,7 +1145,6 @@
         onclick: () => { state.text.font = f; ensureFont(f, 20); rerenderPopover(); }
       })));
       return h('div', {},
-        title('Text', 'text'),
         section('Font', list),
         section('Size', UI.slider({ min: 10, max: 160, value: state.text.size, unit: ' px', onInput: v => { state.text.size = v; upd(); } })),
         section('Colour', UI.swatches({ colors: COLORS, value: state.text.color, onPick: c => { state.text.color = c; upd(); } })),
@@ -1153,7 +1163,6 @@
         rd.readAsDataURL(f);
       });
       return h('div', {},
-        title('Backdrop', 'backdrop'),
         section('Colour', UI.swatches({ colors: BACKDROP_COLORS, value: bd.color, onPick: c => { bd.color = c; apply(); } })),
         section('Pattern', UI.grid({ items: PATTERNS, value: bd.pattern, cols: 6, onPick: id => { bd.pattern = id; apply(); rerenderPopover(); } })),
         bd.pattern !== 'none' ? section('Pattern spacing', UI.slider({ min: 16, max: 96, value: bd.spacing, unit: ' px', onInput: v => { bd.spacing = v; apply(); } })) : null,
@@ -1171,30 +1180,42 @@
     renderBackdrop();
   }
 
+  /* The dialog is a speech bubble: .pop-body (white, inner shadow, scrolls) plus a small tail (.pop-tail)
+     pointing at the tool button that opened it. Pen / Eraser / Select use the narrow 200px bubble from the design. */
+  const NARROW = ['pen', 'eraser', 'select'];
+  function fillPopover() {
+    popBody.replaceChildren(panels[pop.kind]());
+    popover.classList.toggle('narrow', NARROW.includes(pop.kind));
+    popover.classList.toggle('wide', pop.kind === 'tools');
+    popover.classList.toggle('pop-text', pop.kind === 'text');
+  }
   function openPopover(kind, anchor) {
     pop = { kind, anchor };
-    popover.replaceChildren(panels[kind]());
+    fillPopover();
     popover.classList.add('open');
     positionPopover();
   }
   function rerenderPopover() {
     if (!pop.kind) return;
-    const st = popover.scrollTop;
-    popover.replaceChildren(panels[pop.kind]());
+    const st = popBody.scrollTop;
+    fillPopover();
     positionPopover();
-    popover.scrollTop = st;
+    popBody.scrollTop = st;
   }
-  function closePopover() { pop = { kind: null, anchor: null }; popover.classList.remove('open'); zoomLabelEl = null; }
+  function closePopover() { pop = { kind: null, anchor: null }; popover.classList.remove('open'); }
   function togglePopover(kind, anchor) { if (pop.kind === kind) closePopover(); else openPopover(kind, anchor); }
 
-  /* sits just above the bars, centred on the button that opened it */
+  /* sits just above the active tool button (3px gap, like the design) with the tail pointing at its centre */
   function positionPopover() {
     if (!pop.anchor) return;
-    const top = Math.min(toolBar.getBoundingClientRect().top, boardBar.getBoundingClientRect().top);
-    popover.style.maxHeight = Math.max(160, top - 24) + 'px';
-    popover.style.bottom = (H - top + 10) + 'px';
-    const w = popover.offsetWidth, a = pop.anchor.getBoundingClientRect();
-    popover.style.left = UI.clamp(a.left + a.width / 2 - w / 2, 10, Math.max(10, W - w - 10)) + 'px';
+    const a = pop.anchor.getBoundingClientRect();
+    const bars = Math.min(toolBar.getBoundingClientRect().top, boardBar.getBoundingClientRect().top);
+    popBody.style.maxHeight = Math.max(140, bars - 24 - 18) + 'px';
+    popover.style.bottom = (H - a.top + 3) + 'px';
+    const w = popover.offsetWidth;
+    const left = UI.clamp(a.left + a.width / 2 - w / 2, 10, Math.max(10, W - w - 10));
+    popover.style.left = left + 'px';
+    popTail.style.left = UI.clamp(a.left + a.width / 2 - left, 26, w - 26) + 'px';
   }
 
   /* ---------------------------------------------------------
@@ -1278,7 +1299,7 @@
     ovCanvas.addEventListener('pointerup', onUp);
     ovCanvas.addEventListener('pointercancel', onCancel);
     ovCanvas.addEventListener('pointerleave', () => { hover = null; requestOverlay(); });
-    ovCanvas.addEventListener('dblclick', () => { if (state.tool === 'tools' && Geo.byId[state.geo.tool] && Geo.byId[state.geo.tool].variable && g.inputs.length >= 3) finishGeo(); });
+    ovCanvas.addEventListener('dblclick', () => { const t = Geo.byId[state.geo.tool]; if (state.tool === 'tools' && t && t.variable && g.inputs.length >= t.min) finishGeo(); });
     ovCanvas.addEventListener('contextmenu', e => e.preventDefault());
     ovCanvas.addEventListener('wheel', e => {
       e.preventDefault();
@@ -1296,10 +1317,9 @@
       const btn = e.target.closest('[data-tool]'); if (!btn) return;
       const t = btn.dataset.tool;
       if (t === 'clear') { confirmClear(); return; }
-      if (t === 'backdrop') { togglePopover('backdrop', btn); return; }
-      const wasActive = state.tool === t;
-      setTool(t);
-      if (wasActive && pop.kind === t) closePopover(); else openPopover(t, btn);
+      if (state.tool !== t) { closePopover(); setTool(t); return; }   // first click: just select the tool
+      if (t === 'move') return;                                       // Move has no dialog
+      togglePopover(t, btn);                                          // clicking the active tool again: dialog
     });
 
     // board bar
@@ -1319,7 +1339,7 @@
       else if (mod && k === '-') { e.preventDefault(); zoomBy(1 / 1.25); }
       else if (mod && k === '0') { e.preventDefault(); zoomAt(1, { x: W / 2, y: H / 2 }); }
       else if ((k === 'delete' || k === 'backspace') && sel.length) { e.preventDefault(); deleteSelection(); }
-      else if (k === 'enter' && g.inputs.length >= 3 && Geo.byId[state.geo.tool] && Geo.byId[state.geo.tool].variable) finishGeo();
+      else if (k === 'enter' && Geo.byId[state.geo.tool] && Geo.byId[state.geo.tool].variable && g.inputs.length >= Geo.byId[state.geo.tool].min) finishGeo();
       else if (k === 'escape') { resetGeo(); clearSel(); closePopover(); requestRender(); }
     });
 

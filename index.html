@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Rishit's Canvas</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <meta name="description" content="Rishit's Canvas — a whiteboard and graph calculator in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Rishit's Canvas">
+  <meta property="og:description" content="A whiteboard and graph calculator in your browser.">
+  <meta property="og:image" content="https://rishit-1010.github.io/canvas/image%2092.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://rishit-1010.github.io/canvas/image%2092.png">
 
   <!-- Google Fonts: UI fonts, the logo fonts and every font offered by the Text tool -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,47 +26,38 @@
   <div id="scrim"></div>
   <aside id="sidebar" aria-label="Main menu">
     <header class="sb-head">
-      <!-- The logo (same artwork as logo.svg, inlined so it can use the page's Google fonts) -->
-      <svg class="logo" viewBox="140 290 2070 670" role="img" aria-label="Rishit's Canvas">
-        <defs>
-          <mask id="penCutInline" maskUnits="userSpaceOnUse" x="0" y="0" width="2400" height="1260">
-            <rect width="2400" height="1260" fill="#fff"/>
-            <path d="M505 580 L503 676 Q503 684 511 680 L592 641 Q597 638 601 632 L765 388 Q772 378 764 370 L712 332 Q696 318 684 331 L509 574 Q505 578 505 580 Z" fill="#000" stroke="#000" stroke-width="56" stroke-linejoin="round"/>
-          </mask>
-        </defs>
-        <g fill="none" stroke="#000455" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="173" y="410" width="596" height="520" rx="48" stroke-width="32" mask="url(#penCutInline)"/>
-          <path d="M505 580 L503 676 Q503 684 511 680 L592 641 Q597 638 601 632 L765 388 Q772 378 764 370 L712 332 Q696 318 684 331 L509 574 Q505 578 505 580 Z" stroke-width="24"/>
-        </g>
-        <path fill="#000455" d="M222 676 C250 640 290 628 335 645 C380 662 400 700 440 712 C468 718 490 700 498 684 C484 696 465 710 436 720 C396 724 372 690 334 668 C294 646 254 650 222 676 Z"/>
-        <text x="885" y="660" font-family="'Manufacturing Consent', serif" font-size="430" fill="#000455" textLength="1305" lengthAdjust="spacingAndGlyphs">Rishit’s</text>
-        <text x="915" y="897" font-family="'Anta', sans-serif" font-size="185" fill="#000455" textLength="1235" lengthAdjust="spacing">CANVAS</text>
+      <!-- The logo: image 92.png. The filter turns its light background transparent and the artwork navy (#000455) -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <filter id="logoInk" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0.0166  0 0 0 0 0.3333  -0.004219 0 0 0 1"/>
+        </filter>
       </svg>
-      <button id="sbClose" class="icon-btn" data-icon="panel" title="Close menu" aria-label="Close menu"></button>
+      <img class="logo" src="image 92.png" alt="Rishit's Canvas">
+      <button id="sbClose" class="icon-btn" title="Close menu" aria-label="Close menu"><span data-icon="panel" data-exact></span></button>
     </header>
 
     <nav class="sb-body">
       <p class="sb-label">Workspaces</p>
       <button class="sb-item active" data-workspace="whiteboard">
-        <span class="ico" data-icon="pencil"></span>
+        <span class="ico"><span data-icon="pencil" data-exact></span></span>
         <span class="txt"><b>Whiteboard</b><small>Draw, write &amp; construct</small></span>
       </button>
       <button class="sb-item" data-workspace="graph">
-        <span class="ico" data-icon="chart"></span>
+        <span class="ico"><span data-icon="chart" data-exact></span></span>
         <span class="txt"><b>Graph Calculator</b><small>Plot, solve &amp; explore</small></span>
       </button>
 
       <p class="sb-label">Board</p>
       <button class="sb-item" data-action="export-png">
-        <span class="ico" data-icon="image"></span>
+        <span class="ico"><span data-icon="image" data-exact></span></span>
         <span class="txt"><b>Export as PNG</b><small>Save the board as an image</small></span>
       </button>
       <button class="sb-item" data-action="save-file">
-        <span class="ico" data-icon="download"></span>
+        <span class="ico"><span data-icon="download" data-exact></span></span>
         <span class="txt"><b>Save board file</b><small>Download all boards (.json)</small></span>
       </button>
       <button class="sb-item" data-action="open-file">
-        <span class="ico" data-icon="folder"></span>
+        <span class="ico"><span data-icon="folder" data-exact></span></span>
         <span class="txt"><b>Open board file</b><small>Load a saved board</small></span>
       </button>
       <input type="file" id="fileInput" accept=".json,application/json" hidden>
@@ -76,7 +74,7 @@
     <div id="instruments"></div>   <!-- ruler, compass, set squares, protractor -->
     <div id="textLayer"></div>     <!-- on-canvas text editor -->
 
-    <button class="float-btn" data-open-sidebar data-icon="panel" title="Menu" aria-label="Open menu"></button>
+    <button class="float-btn" data-open-sidebar title="Menu" aria-label="Open menu"><span data-icon="panel" data-exact></span></button>
 
     <div id="zoomBadge" aria-live="polite">100%</div>
     <div id="hint"></div>
@@ -84,41 +82,41 @@
     <!-- floating actions for the current selection -->
     <div id="selBar">
       <button id="selCopy" class="sq-btn" data-icon="copy" title="Duplicate"></button>
-      <button id="selDelete" class="sq-btn" data-icon="trash" title="Delete"></button>
+      <button id="selDelete" class="sq-btn" title="Delete"><span data-icon="trash" data-exact></span></button>
     </div>
 
     <!-- option dialog for the active tool -->
-    <div id="popover" class="popover"></div>
+    <div id="popover" class="popover"><div class="pop-body"></div><i class="pop-tail"></i></div>
 
     <!-- board bar (undo / redo / boards) -->
     <div id="boardBar" class="bar">
-      <button id="undoBtn" class="sq-btn" data-icon="undo" title="Undo"></button>
-      <button id="redoBtn" class="sq-btn" data-icon="redo" title="Redo"></button>
+      <button id="undoBtn" class="sq-btn" title="Undo"><span data-icon="undo" data-exact></span></button>
+      <button id="redoBtn" class="sq-btn" title="Redo"><span data-icon="redo" data-exact></span></button>
       <span class="divider"></span>
-      <button id="prevBoard" class="sq-btn" data-icon="chevL" title="Previous board"></button>
+      <button id="prevBoard" class="sq-btn" title="Previous board"><span data-icon="chevL" data-exact></span></button>
       <div id="boardLabel" class="board-label">Board 1 of 1</div>
-      <button id="nextBoard" class="sq-btn" data-icon="chevR" title="Next board"></button>
-      <button id="addBoard" class="sq-btn" data-icon="plus" title="New board"></button>
-      <button id="delBoard" class="sq-btn" data-icon="trash" title="Delete board"></button>
+      <button id="nextBoard" class="sq-btn" title="Next board"><span data-icon="chevR" data-exact></span></button>
+      <button id="addBoard" class="sq-btn" title="New board"><span data-icon="plus" data-exact></span></button>
+      <button id="delBoard" class="sq-btn" title="Delete board"><span data-icon="trash" data-exact></span></button>
     </div>
 
     <!-- tool bar -->
     <div id="toolBar" class="bar">
-      <button class="tool-btn" data-tool="select"><span data-icon="select"></span><span>Select</span></button>
-      <button class="tool-btn" data-tool="move"><span data-icon="move"></span><span>Move</span></button>
-      <button class="tool-btn active" data-tool="pen"><span data-icon="pen"></span><span>Pen</span></button>
-      <button class="tool-btn" data-tool="eraser"><span data-icon="eraser"></span><span>Eraser</span></button>
-      <button class="tool-btn" data-tool="shapes"><span data-icon="shapes"></span><span>Shapes</span></button>
-      <button class="tool-btn" data-tool="tools"><span data-icon="wrench"></span><span>Tools</span></button>
-      <button class="tool-btn" data-tool="clear"><span data-icon="broom"></span><span>Clear</span></button>
-      <button class="tool-btn" data-tool="text"><span data-icon="text"></span><span>Text</span></button>
-      <button class="tool-btn" data-tool="backdrop"><span data-icon="backdrop"></span><span>Backdrop</span></button>
+      <button class="tool-btn" data-tool="select"><span class="tb-in"><span data-icon="select" data-exact></span><span class="tb-label">Select</span></span></button>
+      <button class="tool-btn" data-tool="move"><span class="tb-in"><span data-icon="move" data-exact></span><span class="tb-label">Move</span></span></button>
+      <button class="tool-btn active" data-tool="pen"><span class="tb-in"><span data-icon="pen" data-exact></span><span class="tb-label">Pen</span></span></button>
+      <button class="tool-btn" data-tool="eraser"><span class="tb-in"><span data-icon="eraser" data-exact></span><span class="tb-label">Eraser</span></span></button>
+      <button class="tool-btn" data-tool="shapes"><span class="tb-in"><span data-icon="shapes" data-exact></span><span class="tb-label">Shapes</span></span></button>
+      <button class="tool-btn" data-tool="tools"><span class="tb-in"><span data-icon="wrench" data-exact></span><span class="tb-label">Tools</span></span></button>
+      <button class="tool-btn" data-tool="clear"><span class="tb-in"><span data-icon="broom" data-exact></span><span class="tb-label">Clear</span></span></button>
+      <button class="tool-btn" data-tool="text"><span class="tb-in"><span data-icon="text" data-exact></span><span class="tb-label">Text</span></span></button>
+      <button class="tool-btn" data-tool="backdrop"><span class="tb-in"><span data-icon="backdrop" data-exact></span><span class="tb-label">Backdrop</span></span></button>
     </div>
   </main>
 
   <!-- ===================== GRAPH WORKSPACE (phase 2) ===================== -->
   <main id="ws-graph" class="workspace">
-    <button class="float-btn" data-open-sidebar data-icon="panel" title="Menu" aria-label="Open menu"></button>
+    <button class="float-btn" data-open-sidebar title="Menu" aria-label="Open menu"><span data-icon="panel" data-exact></span></button>
     <div class="placeholder">
       <h2>Graph Calculator</h2>
       <p>Coming in phase 2.</p>
@@ -133,7 +131,7 @@
        whether or not you kept the js/ folder. If a file is missing, a message says which. -->
   <script>
     (function () {
-      var files = ['icons', 'ui', 'geometry', 'whiteboard', 'app'], i = 0;
+      var files = ['icons-design', 'icons', 'ui', 'geometry', 'whiteboard', 'app'], i = 0;
       function load(src, ok, fail) {
         var s = document.createElement('script');
         s.src = src; s.onload = ok; s.onerror = fail;

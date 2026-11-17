@@ -11,7 +11,7 @@
   // small filled dot used by the geometry icons
   const dot = (x, y, r = 1.9) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`;
 
-  window.ICONS = {
+  const HAND = {
     /* ---------- app / sidebar ---------- */
     panel: s('<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><path d="M9.5 3.5v17"/>'),
     pencil: s('<path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/>'),
@@ -91,26 +91,66 @@
     p_columns: s('<path d="M7 4v16M12 4v16M17 4v16"/>'),
     p_iso: s('<path d="M4 8h16M4 15h16M8 4l8 16M16 4L8 20"/>'),
 
-    /* ---------- geometry tools (GeoGebra-style) ---------- */
+    /* ---------- geometry tools (GeoGebra-style, drawn in the app's navy line style) ---------- */
+    /* Points */
     g_point: s(dot(12, 12, 3.2) + '<circle cx="12" cy="12" r="6.5" stroke-dasharray="1.5 3"/>'),
-    g_midpoint: s('<path d="M4 18L20 6"/>' + dot(4, 18) + dot(20, 6) + dot(12, 12, 2.6)),
-    g_segment: s('<path d="M5 18L19 6"/>' + dot(5, 18) + dot(19, 6)),
+    g_pointon: s('<path d="M3.5 18C7 7 15 5 20.5 10"/>' + dot(11.5, 8.6, 2.8)),
+    g_intersect: s('<path d="M4 6l16 12M4 18L20 6"/>' + dot(12, 12, 3)),
+    g_midpoint: s('<path d="M4 18L20 6"/>' + dot(4, 18) + dot(20, 6) + dot(12, 12, 2.8)),
+    g_center: s('<circle cx="12" cy="12" r="8.5"/>' + dot(12, 12, 2.8)),
+    /* Lines */
     g_line: s('<path d="M3 21L21 3"/>' + dot(8, 16) + dot(16, 8)),
+    g_segment: s('<path d="M5 18L19 6"/>' + dot(5, 18) + dot(19, 6)),
+    g_seglen: s('<path d="M4 16h16"/>' + dot(4, 16) + dot(20, 16) + '<path d="M4 11v2.5M8 12v1.5M12 11v2.5M16 12v1.5M20 11v2.5" stroke-width="1.3"/>'),
     g_ray: s('<path d="M5 19L21 5"/>' + dot(5, 19) + dot(12, 13)),
+    g_polyline: s('<path d="M3.5 17.5l5-9.5 5 7 7-9"/>' + dot(3.5, 17.5) + dot(8.5, 8) + dot(13.5, 15) + dot(20.5, 6)),
+    g_vector: s('<path d="M4.5 19.5L19 5"/><path d="M19.5 4.5l-6.3.9M19.5 4.5l-.9 6.3"/>' + dot(4.5, 19.5)),
+    /* Special lines */
     g_perp: s('<path d="M3 18h18M12 3v15"/><path d="M12 14h4v4"/>' + dot(12, 8)),
     g_parallel: s('<path d="M3 10L21 4M3 20l18-6"/>' + dot(12, 7) + dot(12, 17)),
     g_perpbis: s('<path d="M4 15h16M12 3v18"/>' + dot(4, 15) + dot(20, 15) + '<path d="M9.5 12.5h5" stroke-width="1.2"/>'),
     g_anglebis: s('<path d="M4 19h16M4 19L18 5"/><path d="M4 19l16-8" stroke-dasharray="2 2.4"/>'),
+    g_tangent: s('<circle cx="10" cy="14" r="6"/><path d="M3 8h18"/>' + dot(10, 8, 2.2)),
+    /* Polygons */
     g_polygon: s('<path d="M12 3.5l8.5 6.5-3.2 10H6.7L3.5 10z"/>' + dot(12, 3.5) + dot(20.5, 10) + dot(17.3, 20) + dot(6.7, 20) + dot(3.5, 10)),
     g_regpoly: s('<path d="M7.5 4.5h9L21 12l-4.5 7.5h-9L3 12z"/>' + dot(12, 12, 1.6)),
+    /* Circles & arcs */
     g_circle: s('<circle cx="12" cy="12" r="8.5"/>' + dot(12, 12) + dot(20.5, 12)),
-    g_circle3: s('<circle cx="12" cy="12" r="8.5"/>' + dot(12, 3.5) + dot(19.4, 16.2) + dot(4.6, 16.2)),
+    g_circler: s('<circle cx="12" cy="12" r="8.5"/><path d="M12 12h8.5"/>' + dot(12, 12) + '<path d="M16 10v4" stroke-width="1.3"/>'),
     g_compass: s('<circle cx="14" cy="13" r="7" stroke-dasharray="2 2.4"/><path d="M3 5h8"/>' + dot(3, 5) + dot(11, 5) + dot(14, 13)),
+    g_circle3: s('<circle cx="12" cy="12" r="8.5"/>' + dot(12, 3.5) + dot(19.4, 16.2) + dot(4.6, 16.2)),
     g_semicircle: s('<path d="M3.5 16a8.5 8.5 0 0 1 17 0z"/>' + dot(3.5, 16) + dot(20.5, 16)),
-    g_arc: s('<path d="M5 19a10 10 0 0 1 14-14" />' + dot(5, 19) + dot(19, 5) + dot(5, 5, 1.5)),
+    g_arc: s('<path d="M19 18.5A9.5 9.5 0 0 0 5.5 5.5"/>' + dot(5.5, 18.5) + dot(19, 18.5) + dot(5.5, 5.5)),
+    g_arc3: s('<path d="M4 18a9 9 0 0 1 16 0"/>' + dot(4, 18) + dot(12, 9.2) + dot(20, 18)),
+    g_sector: s('<path d="M12 19L5 9.5a9 9 0 0 1 14 0z"/>' + dot(12, 19) + dot(5, 9.5) + dot(19, 9.5)),
+    g_sector3: s('<path d="M12 19L5 9.5a9 9 0 0 1 14 0z"/>' + dot(5, 9.5) + dot(12, 6.2) + dot(19, 9.5)),
+    /* Conics */
+    g_ellipse: s('<ellipse cx="12" cy="12" rx="9" ry="5.5"/>' + dot(8, 12, 1.7) + dot(16, 12, 1.7)),
+    g_hyperbola: s('<path d="M9.5 3c-3 6-3 12 0 18M14.5 3c3 6 3 12 0 18"/>' + dot(6, 12, 1.5) + dot(18, 12, 1.5)),
+    g_parabola: s('<path d="M5 4c1 10 4.5 15 7 15s6-5 7-15"/><path d="M3 21h18" stroke-dasharray="2 2.4"/>' + dot(12, 11.5, 1.8)),
+    /* Measurement */
     g_angle: s('<path d="M4 19h16M4 19L17 6"/><path d="M11 19a7 7 0 0 0-2-5"/>'),
+    g_anglesize: s('<path d="M4 19h16M4 19L17 7"/><path d="M11 19a7 7 0 0 0-1.5-4.5"/><circle cx="17.5" cy="14" r="1.3" stroke-width="1.2"/>'),
     g_distance: s('<path d="M4 12h16M4 8v8M20 8v8M7 12l2-2M7 12l2 2M17 12l-2-2M17 12l-2 2"/>'),
+    g_area: s('<path d="M5 18.5V8.5l7-4.5 7 4.5v10z"/><path d="M8.5 16l7-7M8.5 11.5l3.5-3.5M12 16l3.5-3.5" stroke-width="1.2"/>'),
+    g_slope: s('<path d="M3.5 19.5L20.5 4.5"/><path d="M9 15h8V8.5" stroke-dasharray="2 2.4"/>'),
+    /* Transformations */
     g_reflect: s('<path d="M12 3v18" stroke-dasharray="2 2.4"/><path d="M3.5 8l6 4-6 4z"/><path d="M20.5 8l-6 4 6 4z"/>'),
-    g_intersect: s('<path d="M4 6l16 12M4 18L20 6"/>' + dot(12, 12, 3))
+    g_reflectpoint: s(dot(6, 17.5) + dot(18, 6.5) + '<circle cx="12" cy="12" r="2.2"/><path d="M6 17.5L10.2 13.6M13.8 10.4L18 6.5" stroke-dasharray="2 2"/>'),
+    g_inversion: s('<circle cx="9.5" cy="12" r="6"/>' + dot(9.5, 12, 1.4) + dot(13.8, 12, 1.8) + dot(19.5, 12, 1.8) + '<path d="M9.5 12h11" stroke-width="1.2"/>'),
+    g_rotate: s('<path d="M19.5 12a7.5 7.5 0 1 1-2.3-5.4"/><path d="M19.8 3.8v4.4h-4.4"/>' + dot(12, 12, 2.2)),
+    g_translate: s('<path d="M3.5 17.5l3-5.5 3 5.5z"/><path d="M12.5 12.5h8M17.5 9l3.5 3.5-3.5 3.5"/>'),
+    g_dilate: s('<path d="M4 20h7V13z"/><path d="M4 20h16V4z"/>' + dot(4, 20, 2.2)),
+    /* General */
+    g_image: s('<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/>'),
+    g_delete: s('<path d="M4.5 7h15M9.5 4h5M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
+    g_hide: s('<path d="M2.5 12C5 7 9 5.5 12 5.5s7 1.5 9.5 6.5c-2.5 5-6.5 6.5-9.5 6.5S5 17 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'),
+    g_label: s('<path d="M6.5 19L12 5l5.5 14M8.6 14h6.8"/>' + dot(19.5, 5.5, 1.6)),
+    g_copystyle: s('<path d="M5 4.5h10v5H5zM15 7h3.5v4.5h-8V15M10.5 15v5"/>'),
+    g_zoomin: s('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5M7.5 10.5h6M10.5 7.5v6"/>'),
+    g_zoomout: s('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5M7.5 10.5h6"/>')
   };
+
+  // the traced design icons (icons-design.js) win over the hand-drawn ones of the same name
+  window.ICONS = Object.assign({}, HAND, window.ICONS_D || {});
 })();
