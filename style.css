@@ -87,20 +87,13 @@ canvas { position: absolute; left: 0; top: 0; }
 }
 
 /* ---------- 6. Option dialogs: a white speech bubble with an INNER shadow and a tail ---------- */
-.popover { position: absolute; z-index: 30; display: none; width: min(330px, calc(100vw - 20px)); padding-bottom: 18px; }
+.popover { position: absolute; z-index: 30; display: none; width: min(330px, calc(100vw - 20px)); padding-bottom: 17px; }  /* 17px = height of the tail */
 .popover.narrow { width: 200px; }
 .popover.wide { width: min(380px, calc(100vw - 20px)); }
 .popover.open { display: block; }
-.pop-body {
-  position: relative; overflow: auto; overflow-x: hidden; padding: 20px 30px; background: #fff; border-radius: 20px;
-  box-shadow: inset 0 0 6px rgba(0, 0, 0, .25);          /* the inner shadow from the design */
-}
-.popover:not(.narrow) .pop-body { padding: 20px 22px; }
-.pop-tail {                                              /* little triangle pointing at the tool button */
-  position: absolute; bottom: 1px; width: 0; height: 0; margin-left: -9px;
-  border: 9px solid transparent; border-top: 17px solid #fff; border-bottom: 0;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .3));
-}
+.pop-bg { position: absolute; left: 0; top: 0; z-index: 0; overflow: visible; pointer-events: none; }   /* the bubble itself */
+.pop-body { position: relative; z-index: 1; overflow: auto; overflow-x: hidden; padding: 20px 30px; border-radius: 30px; }
+.popover:not(.narrow) .pop-body { padding: 22px 26px; }
 .pop-sec { margin-bottom: 15px; }
 .pop-sec:last-child { margin-bottom: 0; }
 /* section labels: Parkinsans Medium 12px, 2px letter-spacing */

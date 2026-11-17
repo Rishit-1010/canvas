@@ -33,7 +33,7 @@
   const ov = ovCanvas.getContext('2d');
   const mctx = document.createElement('canvas').getContext('2d');   // scratch context for measuring text
   const instLayer = $('#instruments'), textLayer = $('#textLayer');
-  const popover = $('#popover'), popBody = $('#popover .pop-body'), popTail = $('#popover .pop-tail'), selBar = $('#selBar'), hintEl = $('#hint'), zoomBadge = $('#zoomBadge');
+  const popover = $('#popover'), popBody = $('#popover .pop-body'), popBg = $('#popover .pop-bg'), popPath = $('#popover .pop-bg path'), selBar = $('#selBar'), hintEl = $('#hint'), zoomBadge = $('#zoomBadge');
   const toolBar = $('#toolBar'), boardBar = $('#boardBar'), boardLabel = $('#boardLabel');
   const undoBtn = $('#undoBtn'), redoBtn = $('#redoBtn'), prevBtn = $('#prevBoard'), nextBtn = $('#nextBoard');
 
@@ -1205,17 +1205,30 @@
   function closePopover() { pop = { kind: null, anchor: null }; popover.classList.remove('open'); }
   function togglePopover(kind, anchor) { if (pop.kind === kind) closePopover(); else openPopover(kind, anchor); }
 
+  /* Draws the bubble outline (exactly the design's shape): rounded box of size w x bh (radius 30)
+     with a 17px tail whose tip is at x = cx on the bottom edge. */
+  function drawBubble(w, bh, cx) {
+    const r = 30, k = 13.431, t = bh, X = v => +(cx + v).toFixed(2), Y = v => +(t + v).toFixed(2);
+    popPath.setAttribute('d',
+      `M${r} 0H${w - r}C${w - k} 0 ${w} ${r - k} ${w} ${r}V${bh - r}C${w} ${bh - r + k} ${w - k} ${bh} ${w - r} ${bh}` +
+      `H${X(15.306)}C${X(14.344)} ${Y(0)} ${X(13.441)} ${Y(0.461)} ${X(12.877)} ${Y(1.239)}L${X(2.429)} ${Y(15.65)}` +
+      `C${X(1.231)} ${Y(17.302)} ${X(-1.231)} ${Y(17.302)} ${X(-2.429)} ${Y(15.65)}L${X(-12.877)} ${Y(1.239)}` +
+      `C${X(-13.441)} ${Y(0.461)} ${X(-14.344)} ${Y(0)} ${X(-15.306)} ${Y(0)}H${r}` +
+      `C${k} ${bh} 0 ${bh - r + k} 0 ${bh - r}V${r}C0 ${r - k} ${k} 0 ${r} 0Z`);
+    popBg.setAttribute('width', w); popBg.setAttribute('height', bh + 17);
+  }
+
   /* sits just above the active tool button (3px gap, like the design) with the tail pointing at its centre */
   function positionPopover() {
     if (!pop.anchor) return;
     const a = pop.anchor.getBoundingClientRect();
     const bars = Math.min(toolBar.getBoundingClientRect().top, boardBar.getBoundingClientRect().top);
-    popBody.style.maxHeight = Math.max(140, bars - 24 - 18) + 'px';
+    popBody.style.maxHeight = Math.max(140, bars - 24 - 17) + 'px';
     popover.style.bottom = (H - a.top + 3) + 'px';
     const w = popover.offsetWidth;
     const left = UI.clamp(a.left + a.width / 2 - w / 2, 10, Math.max(10, W - w - 10));
     popover.style.left = left + 'px';
-    popTail.style.left = UI.clamp(a.left + a.width / 2 - left, 26, w - 26) + 'px';
+    drawBubble(w, popBody.offsetHeight, UI.clamp(a.left + a.width / 2 - left, 45, w - 45));
   }
 
   /* ---------------------------------------------------------
