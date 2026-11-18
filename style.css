@@ -254,20 +254,24 @@ body.sb-open #sidebar { transform: none; }
 .placeholder h2 { margin: 0 0 6px; font: 700 22px var(--font-ui); }
 .placeholder p { margin: 0; color: var(--muted); }
 
-/* ---------- 12. Phone layout ----------
+/* ---------- 12. Phone layout (measured from the iPhone design) ----------
    Used on every screen narrower than the two bars side by side (646 + 481 = 1127px).
-   Tool bar: 393x48 (the desktop buttons scaled to 0.6), board bar: 371x48 sitting 10px above it. */
+   Tool bar: 393x48, square corners, 0.2px navy top line; buttons 36x38, radius 5, inner shadow.
+   Board bar: 371x48, radius 10, 10px above the tool bar; buttons 26x26, radius 5. */
 @media (max-width: 1126px) {
-  #toolBar { left: 50%; transform: translateX(-50%); width: min(393px, 100vw); height: 48px; padding: 0 18px; gap: 4px; border-radius: 0; justify-content: flex-start; box-shadow: inset 0 0 4px rgba(0, 0, 0, .25); }
-  .tool-btn { width: 36px; height: 38.4px; border-radius: 6px; }
+  /* free space is shared equally: left margin = gap between tools = right margin (each button has 2px margin, bar has 2px padding => at least 4px everywhere, so it scrolls sideways only when 9 tools cannot fit) */
+  #toolBar { left: 50%; transform: translateX(-50%); width: min(393px, 100vw); height: 48px; padding: 0 2px; gap: 0; border-radius: 0; justify-content: space-evenly; box-shadow: none; border-top: .2px solid var(--navy); }
+  .tool-btn { width: 36px; height: 38px; margin: 0 2px; border-radius: 5px; box-shadow: inset 0 0 2px rgba(0, 0, 0, .25); }
   .tb-in { transform: scale(.6); }
-  .tool-btn.active { transform: translateY(-2px); }
+  .tb-label { top: 40px; }                                   /* label sits 24px below the button top, 7px type */
+  .tool-btn.active { transform: translateY(-2px); box-shadow: 0 0 4px rgba(0, 0, 0, .25); }
+
   #boardBar { left: 50%; right: auto; transform: translateX(-50%); bottom: 58px; width: min(371px, calc(100vw - 20px)); height: 48px; padding: 0 10px; gap: 6px; border-radius: 10px; justify-content: space-between; }
-  .sq-btn { width: 26px; height: 26px; border-radius: 4px; }
+  .sq-btn { width: 26px; height: 26px; border-radius: 5px; box-shadow: 0 0 4px rgba(0, 0, 0, .25); }
   .sq-btn [data-icon] { zoom: .7222; }
-  .divider { height: 30px; margin: 0 2px; }
-  .board-label { width: auto; flex: 1; min-width: 0; height: 26px; font-size: 13px; border-radius: 4px; }
+  .divider { display: none; }
+  .board-label { width: 149px; max-width: 100%; flex: 0 1 149px; min-width: 0; height: 26px; font-size: 14px; border-radius: 5px; box-shadow: none; }
   #zoomBadge { bottom: 118px; }
-  .float-btn { left: 14px; top: 14px; }
+  .float-btn { left: 20px; top: 20px; }
 }
 body:not(.sb-open) #sidebar { box-shadow: none; }
