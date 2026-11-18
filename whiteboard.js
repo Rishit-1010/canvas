@@ -846,7 +846,7 @@
 
   function geoDown(w) {
     const tool = Geo.byId[state.geo.tool];
-    if (!tool) return;
+    if (!tool || g.busy) return;     // ignore clicks while the number dialog is open
     const step = currentStep();
     if (step === 'pt') {
       let dot = snapDot(w);
@@ -867,12 +867,21 @@
     else requestOverlay();
   }
 
-  function finishGeo() {
+  /* Builds the construction from the clicked inputs. Tools with an "ask" (segment length, circle radius, angle,
+     rotation, dilation, number of vertices …) first show a small number dialog, like GeoGebra / Desmos do. */
+  async function finishGeo() {
     const tool = Geo.byId[state.geo.tool];
-    if (!tool) return;
+    if (!tool || g.busy) return;
     const inputs = g.inputs.map(i => (i.line ? { a: i.line.a, b: i.line.b, ext: i.line.ext } : { x: i.x, y: i.y }));
-    const built = tool.build(inputs, { label: nextLabel, sides: state.geo.sides });
     const pending = g.pending;
+    let val;
+    if (tool.ask) {
+      g.busy = true;
+      val = await UI.prompt({ title: tool.ask.title, label: tool.ask.label, value: tool.ask.def, unit: tool.ask.unit, integer: tool.ask.integer, min: tool.ask.min, max: tool.ask.max });
+      g.busy = false;
+      if (val == null) { g.inputs = []; g.pending = []; requestOverlay(); return; }     // cancelled: nothing is drawn
+    }
+    const built = tool.build(inputs, { label: nextLabel, val });
     g.inputs = []; g.pending = [];
     if (built.length || pending.length) commit([...board().objects, ...built, ...pending]);
     else requestOverlay();
@@ -1132,7 +1141,6 @@
       return h('div', {},
                 section('Instruments', inst, h('div', { class: 'pop-note', style: { marginTop: '8px' }, text: 'Drag the round handles to move, rotate or remove an instrument. Swing the compass hinge to draw an arc.' })),
         section('Geometry', ...geoBlocks),
-        active && active.usesSides ? section('Number of sides', UI.slider({ min: 3, max: 12, value: state.geo.sides, onInput: v => { state.geo.sides = v; } })) : null,
         active ? h('div', { class: 'hint-line', text: active.name + ' — ' + active.hint }) : h('div', { class: 'hint-line', text: 'Pick a geometry tool, then click on the board.' }));
     },
 

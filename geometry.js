@@ -363,9 +363,9 @@
     /* ===== Polygons ===== */
     T('polygon', 'Polygon', 'Polygons', 'g_polygon', ['pt'], 'Click the corners. Click the first point again (or press Enter) to finish.',
       pts => (pts.length >= 3 ? [mk('poly', { pts: pts.map(P) })] : []), { variable: true, min: 3, closeOnFirst: true }),
-    T('regpoly', 'Regular Polygon', 'Polygons', 'g_regpoly', ['pt', 'pt'], 'Click two neighbouring corners. Set the number of sides below.',
+    T('regpoly', 'Regular Polygon', 'Polygons', 'g_regpoly', ['pt', 'pt'], 'Click two neighbouring corners, then enter the number of vertices.',
       ([a, b], o) => {
-        const n = Math.max(3, o.sides | 0), turn = TAU / n;
+        const n = Math.max(3, Math.min(100, Math.round(o.val))), turn = TAU / n;
         const pts = [P(a), P(b)];
         let v = sub(b, a), cur = P(b);
         for (let k = 2; k < n; k++) {
@@ -374,7 +374,7 @@
           cur = add(cur, v); pts.push(P(cur));
         }
         return [mk('poly', { pts })];
-      }, { usesSides: true }),
+      }, { ask: { title: 'Regular Polygon', label: 'Vertices', unit: '', def: 5, integer: true, min: 3, max: 100 } }),
 
     /* ===== Circles & arcs ===== */
     T('circle', 'Circle: Centre & Point', 'Circles & Arcs', 'g_circle', ['pt', 'pt'], 'Click the centre, then a point on the circle.',

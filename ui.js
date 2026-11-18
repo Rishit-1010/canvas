@@ -97,6 +97,7 @@
       const c = current();
       swatch.style.background = c;
       handle.style.background = c;
+      hueIn.style.setProperty('--hue', 'hsl(' + hue + ',100%,50%)');   // colour shown inside the slider thumb
       if (!skipHex) hexIn.value = c;
     }
     function emit(skipHex) { paint(skipHex); onChange(current()); }
@@ -156,12 +157,18 @@
   }
 
   /* promise-based number prompt (used by tools that need a length, angle or factor) */
-  function promptNumber({ title: t, label, value = '', unit = '' }) {
+  function promptNumber({ title: t, label, value = '', unit = '', integer = false, min = null, max = null }) {
     return new Promise(resolve => {
       const modal = document.getElementById('modal');
-      const input = h('input', { type: 'number', step: 'any', value, class: 'prompt-input', 'aria-label': label });
+      const input = h('input', { type: 'number', step: integer ? 1 : 'any', min, max, value, class: 'prompt-input', 'aria-label': label });
       const close = v => { modal.classList.remove('open'); modal.innerHTML = ''; resolve(v); };
-      const ok = () => { const n = parseFloat(input.value); close(Number.isFinite(n) ? n : null); };
+      const ok = () => {
+        let n = parseFloat(input.value);
+        if (!Number.isFinite(n)) return input.focus();
+        if (integer) n = Math.round(n);
+        if ((min != null && n < min) || (max != null && n > max)) { input.classList.add('bad'); return input.focus(); }   // out of range: keep the dialog open
+        close(n);
+      };
       input.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') close(null); e.stopPropagation(); });
       modal.innerHTML = '';
       modal.append(h('div', { class: 'modal-card', role: 'dialog' },
