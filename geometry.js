@@ -474,5 +474,123 @@
   /* A, B, C … Z, A1, B1 … */
   const labelFor = n => String.fromCharCode(65 + (n % 26)) + (n >= 26 ? Math.floor(n / 26) : '');
 
-  window.Geo = { TOOLS, GROUPS, byId, KINDS, hit, distToObj, distToLine, nearestOn, segsOf, labelFor, PX_PER_CM, NAVY };
+
+  /* =========================================================
+     Controller: the click-by-click interaction shared by the whiteboard and the graph calculator.
+     The host (whiteboard / graph) supplies a few functions:
+       objects()           the current list of objects (plain data, in the host's own coordinates)
+       commit(list)        replace the objects (the host makes it undoable)
+       nextLabel()         next free point name (A, B, C …)
+       scale()             screen pixels per coordinate unit (used for click tolerances)
+       redraw()            repaint the preview
+       zoomAt(f, at)       zoom by factor f around position "at"
+       pickImage()         promise of { src, w, h } or null
+       ask(opts)           number prompt (promise of a number or null)
+       bbox(o)             optional bounding box for text / images
+     ========================================================= */
+  function createController(host) {
+    let tool = null, chosen = [], ats = [], pending = [], busy = false, hover = null;
+    const px = () => 1 / host.scale();
+    const stepOf = () => (tool ? (tool.variable ? 'pt' : tool.steps[chosen.length + ats.length]) : null);
+    const dotsNow = () => [...host.objects().filter(o => o.type === 'dot' && !o.hidden), ...pending];
+    function snapDot(w) {
+      let best = null, bd = 14 * px();
+      for (const d of dotsNow()) { const k = Math.hypot(d.x - w.x, d.y - w.y); if (k <= bd) { best = d; bd = k; } }
+      return best;
+    }
+    const reset = () => { chosen = []; ats = []; pending = []; host.redraw(); };
+
+    function down(w) {
+      if (!tool || busy) return;
+      const step = stepOf();
+      if (step === 'pt') {
+        let d = snapDot(w);
+        if (!d) { d = { type: 'dot', x: w.x, y: w.y, size: 5, color: NAVY, label: host.nextLabel() }; pending.push(d); }
+        const last = chosen[chosen.length - 1];
+        if (last && last.dot === d) return;                                           // double-click on the same point
+        if (tool.variable && chosen.length >= 3 && d === chosen[0].dot && tool.closeOnFirst) { finish(); return; }
+        chosen.push({ x: d.x, y: d.y, dot: d });
+      } else if (step === 'at') {
+        ats.push({ x: w.x, y: w.y });
+      } else {
+        const ob = hit([...host.objects(), ...pending], w, 10 * px(), step, host.bbox, step === 'anyh' || tool.id === 'hide');
+        if (!ob) return;
+        chosen.push({ obj: ob });
+      }
+      if (!tool.variable && chosen.length + ats.length === tool.steps.length) finish(); else host.redraw();
+    }
+
+    async function finish() {
+      if (!tool || busy) return;
+      if (tool.variable && chosen.length < (tool.min || 2)) return;
+      const t = tool, objects = host.objects();
+      const inputs = chosen.map(c => (c.obj ? c.obj : { x: c.x, y: c.y }));
+      const dotsMade = pending;
+      let val;
+      if (t.ask) {
+        busy = true;
+        val = await host.ask({ title: t.ask.title, label: t.ask.label, value: t.ask.def, unit: t.ask.unit, integer: t.ask.integer, min: t.ask.min, max: t.ask.max });
+        busy = false;
+        if (val == null) { reset(); return; }                                         // cancelled: nothing is drawn
+      }
+      let result = t.build(inputs, { label: host.nextLabel, val, at: ats.slice() });
+      let list = objects.slice(), built = [];
+      for (const r of result) {
+        if (!r.__op) { built.push(r); continue; }
+        if (r.__op === 'delete') list = list.filter(o => o !== r.target);
+        else if (r.__op === 'hide') list = list.map(o => (o === r.target ? { ...o, hidden: !o.hidden } : o));
+        else if (r.__op === 'label') list = list.map(o => (o === r.target ? { ...o, labelHidden: !o.labelHidden } : o));
+        else if (r.__op === 'style') list = list.map(o => (o === r.to ? { ...o, color: r.from.color, size: r.from.size, dash: r.from.dash } : o));
+        else if (r.__op === 'zoom') host.zoomAt(r.f, r.at);
+        else if (r.__op === 'image') {
+          const im = await host.pickImage();
+          if (im) built.push({ type: 'image', x: r.at.x, y: r.at.y, w: im.w, h: im.h, src: im.src });
+        }
+      }
+      // "keep" tools (Copy Visual Style) keep their first pick for the next click
+      const keepN = t.keep || 0;
+      chosen = chosen.slice(0, keepN); ats = []; pending = [];
+      if (built.length || dotsMade.length || list.length !== objects.length || list.some((o, i) => o !== objects[i])) host.commit([...list, ...built, ...dotsMade]);
+      else host.redraw();
+    }
+
+    /* preview: new points, rubber band, hover highlight; px = size of one screen pixel in coordinates */
+    function draw(c, drawObject) {
+      const p1 = px();
+      c.save();
+      pending.forEach(d => drawObject(c, d));
+      chosen.forEach(ch => { if (ch.obj) { c.globalAlpha = 0.35; drawObject(c, { ...ch.obj, color: '#1E88E5', size: 7 * p1, dash: 'solid' }); c.globalAlpha = 1; } });
+      if (hover && tool) {
+        const step = stepOf();
+        c.strokeStyle = c.fillStyle = NAVY;
+        if (step === 'pt') {
+          const snap = snapDot(hover), tip = snap || hover, last = chosen[chosen.length - 1];
+          c.lineWidth = 1.5 * p1; c.setLineDash([5 * p1, 4 * p1]); c.globalAlpha = 0.7;
+          if (tool.variable && chosen.length) { c.beginPath(); chosen.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.lineTo(tip.x, tip.y); c.stroke(); }
+          else if (last && last.dot) { c.beginPath(); c.moveTo(last.x, last.y); c.lineTo(tip.x, tip.y); c.stroke(); }
+          c.setLineDash([]); c.globalAlpha = snap ? 1 : 0.45;
+          c.beginPath(); c.arc(tip.x, tip.y, (snap ? 9 : 4.5) * p1, 0, TAU);
+          if (snap) c.stroke(); else c.fill();
+        } else if (step === 'at') {
+          c.globalAlpha = 0.45; c.beginPath(); c.arc(hover.x, hover.y, 4.5 * p1, 0, TAU); c.fill();
+        } else if (step) {
+          const ob = hit([...host.objects(), ...pending], hover, 10 * p1, step, host.bbox, step === 'anyh' || tool.id === 'hide');
+          if (ob && ob.type !== 'image' && ob.type !== 'text') { c.globalAlpha = 0.35; drawObject(c, { ...ob, color: '#1E88E5', size: 7 * p1, dash: 'solid' }); }
+        }
+      }
+      c.restore();
+    }
+
+    return {
+      setTool(id) { tool = id ? byId[id] : null; reset(); },
+      get tool() { return tool; },
+      down, finish, reset, draw,
+      move(w) { hover = w; if (tool) host.redraw(); },
+      leave() { hover = null; host.redraw(); },
+      count: () => chosen.length,
+      canFinish: () => !!(tool && tool.variable && chosen.length >= (tool.min || 2))
+    };
+  }
+
+  window.Geo = { createController, TOOLS, GROUPS, byId, KINDS, hit, distToObj, distToLine, nearestOn, segsOf, labelFor, PX_PER_CM, NAVY };
 })();

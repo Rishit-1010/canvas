@@ -96,7 +96,6 @@
   let pinch = null, ignoreUntilUp = false;
   let editor = null;                // on-canvas text editor
   let pop = { kind: null, anchor: null };
-  const g = { inputs: [], pending: [] };   // geometry construction in progress
 
   /* ---------------------------------------------------------
      4. View helpers (pan / zoom)
@@ -663,6 +662,7 @@
     if (ignoreUntilUp) return;
     hover = s;
     const w = toWorld(s), b = board();
+    if (state.tool === 'tools') geoCtl.move(w);
     if (!drag) { if (state.tool === 'eraser' || (state.tool === 'tools' && state.geo.tool)) requestOverlay(); return; }
 
     switch (drag.type) {
@@ -826,98 +826,42 @@
   /* ---------------------------------------------------------
      13. Geometry construction (Tools → geometry tools)
      --------------------------------------------------------- */
-  function resetGeo() { g.inputs = []; g.pending = []; requestOverlay(); }
   const nextLabel = () => Geo.labelFor(board().labelCount++);
 
-  function allDots() { return [...board().objects.filter(o => o.type === 'dot'), ...g.pending]; }
-  function snapDot(w) {
-    const r = 14 / board().s;
-    let best = null, bd = r;
-    for (const d of allDots()) { const dist = Math.hypot(d.x - w.x, d.y - w.y); if (dist <= bd) { best = d; bd = dist; } }
-    return best;
+  /* The click-by-click logic lives in geometry.js (shared with the graph calculator). */
+  function pickImageFile() {
+    return new Promise(resolve => {
+      const inp = h('input', { type: 'file', accept: 'image/*' });
+      inp.onchange = () => {
+        const f = inp.files[0];
+        if (!f) return resolve(null);
+        const rd = new FileReader();
+        rd.onload = () => {
+          const im = new Image();
+          im.onload = () => { const k = Math.min(1, 400 / Math.max(im.naturalWidth, im.naturalHeight)); resolve({ src: rd.result, w: im.naturalWidth * k, h: im.naturalHeight * k }); };
+          im.onerror = () => resolve(null);
+          im.src = rd.result;
+        };
+        rd.readAsDataURL(f);
+      };
+      inp.click();
+    });
   }
-  function hitLine(w) {
-    const r = 10 / board().s;
-    let best = null, bd = r;
-    for (const o of board().objects) {
-      if (o.type !== 'seg') continue;
-      const d = Geo.distToLine(w, o);
-      if (d <= bd) { best = o; bd = d; }
-    }
-    return best;
-  }
-  const currentStep = () => { const t = Geo.byId[state.geo.tool]; return t ? (t.variable ? 'pt' : t.steps[g.inputs.length]) : null; };
-
-  function geoDown(w) {
-    const tool = Geo.byId[state.geo.tool];
-    if (!tool || g.busy) return;     // ignore clicks while the number dialog is open
-    const step = currentStep();
-    if (step === 'pt') {
-      let dot = snapDot(w);
-      if (!dot) {
-        dot = { type: 'dot', x: w.x, y: w.y, size: 5, color: Geo.NAVY, label: nextLabel() };
-        g.pending.push(dot);
-      }
-      const last = g.inputs[g.inputs.length - 1];
-      if (last && last.dot === dot) return;                                   // ignore double-click on the same point
-      if (tool.variable && g.inputs.length >= 3 && dot === g.inputs[0].dot) { finishGeo(); return; }   // polygon closed
-      g.inputs.push({ x: dot.x, y: dot.y, dot });
-    } else if (step === 'line') {
-      const l = hitLine(w);
-      if (!l) return;
-      g.inputs.push({ line: l });
-    }
-    if (!tool.variable && g.inputs.length === tool.steps.length) finishGeo();
-    else requestOverlay();
-  }
-
-  /* Builds the construction from the clicked inputs. Tools with an "ask" (segment length, circle radius, angle,
-     rotation, dilation, number of vertices …) first show a small number dialog, like GeoGebra / Desmos do. */
-  async function finishGeo() {
-    const tool = Geo.byId[state.geo.tool];
-    if (!tool || g.busy) return;
-    const inputs = g.inputs.map(i => (i.line ? { a: i.line.a, b: i.line.b, ext: i.line.ext } : { x: i.x, y: i.y }));
-    const pending = g.pending;
-    let val;
-    if (tool.ask) {
-      g.busy = true;
-      val = await UI.prompt({ title: tool.ask.title, label: tool.ask.label, value: tool.ask.def, unit: tool.ask.unit, integer: tool.ask.integer, min: tool.ask.min, max: tool.ask.max });
-      g.busy = false;
-      if (val == null) { g.inputs = []; g.pending = []; requestOverlay(); return; }     // cancelled: nothing is drawn
-    }
-    const built = tool.build(inputs, { label: nextLabel, val });
-    g.inputs = []; g.pending = [];
-    if (built.length || pending.length) commit([...board().objects, ...built, ...pending]);
-    else requestOverlay();
-  }
-
-  function drawGeoPreview() {
-    const b = board(), px = 1 / b.s, tool = Geo.byId[state.geo.tool];
-    ov.save();
-    g.pending.forEach(d => drawObject(ov, d));
-    if (hover) {
-      const w = toWorld(hover), step = currentStep();
-      ov.strokeStyle = '#000455'; ov.fillStyle = '#000455';
-      if (step === 'pt') {
-        const snap = snapDot(w), tip = snap || w;
-        // rubber band from the last chosen point
-        const last = g.inputs[g.inputs.length - 1];
-        ov.lineWidth = 1.5 * px; ov.setLineDash([5 * px, 4 * px]); ov.globalAlpha = 0.7;
-        if (tool.variable && g.inputs.length) {
-          ov.beginPath(); g.inputs.forEach((p, i) => (i ? ov.lineTo(p.x, p.y) : ov.moveTo(p.x, p.y))); ov.lineTo(tip.x, tip.y); ov.stroke();
-        } else if (last && last.dot) {
-          ov.beginPath(); ov.moveTo(last.x, last.y); ov.lineTo(tip.x, tip.y); ov.stroke();
-        }
-        ov.setLineDash([]); ov.globalAlpha = snap ? 1 : 0.45;
-        ov.beginPath(); ov.arc(tip.x, tip.y, snap ? 9 * px : 4.5 * px, 0, TAU);
-        if (snap) ov.stroke(); else ov.fill();
-      } else if (step === 'line') {
-        const l = hitLine(w);
-        if (l) { ov.globalAlpha = 0.35; drawObject(ov, { ...l, color: '#1E88E5', size: 7 * px, dash: 'solid' }); }
-      }
-    }
-    ov.restore();
-  }
+  const geoCtl = Geo.createController({
+    objects: () => board().objects,
+    commit: list => commit(list),
+    nextLabel,
+    scale: () => board().s,
+    redraw: () => requestOverlay(),
+    zoomAt: (f, at) => zoomAt(board().s * f, toScreen(at)),
+    pickImage: pickImageFile,
+    ask: o => UI.prompt(o),
+    bbox: o => bboxOf(o)
+  });
+  const resetGeo = () => geoCtl.reset();
+  const geoDown = w => geoCtl.down(w);
+  const finishGeo = () => geoCtl.finish();
+  const drawGeoPreview = () => geoCtl.draw(ov, drawObject);
 
   /* ---------------------------------------------------------
      14. Instruments: scale, compass, set squares, protractor
@@ -1357,7 +1301,7 @@
 
   function setGeoTool(id) {
     state.geo.tool = id;
-    resetGeo();
+    geoCtl.setTool(id);
     setTool('tools');
     const t = Geo.byId[id];
     showHint(t.name + ': ' + t.hint);
@@ -1417,8 +1361,8 @@
     ovCanvas.addEventListener('pointermove', onMove);
     ovCanvas.addEventListener('pointerup', onUp);
     ovCanvas.addEventListener('pointercancel', onCancel);
-    ovCanvas.addEventListener('pointerleave', () => { hover = null; requestOverlay(); });
-    ovCanvas.addEventListener('dblclick', () => { const t = Geo.byId[state.geo.tool]; if (state.tool === 'tools' && t && t.variable && g.inputs.length >= t.min) finishGeo(); });
+    ovCanvas.addEventListener('pointerleave', () => { hover = null; geoCtl.leave(); requestOverlay(); });
+    ovCanvas.addEventListener('dblclick', () => { if (state.tool === 'tools' && geoCtl.canFinish()) finishGeo(); });
     ovCanvas.addEventListener('contextmenu', e => e.preventDefault());
     ovCanvas.addEventListener('wheel', e => {
       e.preventDefault();
@@ -1466,7 +1410,7 @@
       else if (mod && k === '-') { e.preventDefault(); zoomBy(1 / 1.25); }
       else if (mod && k === '0') { e.preventDefault(); zoomAt(1, { x: W / 2, y: H / 2 }); }
       else if ((k === 'delete' || k === 'backspace') && sel.length) { e.preventDefault(); deleteSelection(); }
-      else if (k === 'enter' && Geo.byId[state.geo.tool] && Geo.byId[state.geo.tool].variable && g.inputs.length >= Geo.byId[state.geo.tool].min) finishGeo();
+      else if (k === 'enter' && state.tool === 'tools' && geoCtl.canFinish()) finishGeo();
       else if (k === 'escape') { resetGeo(); clearSel(); closePopover(); requestRender(); }
     });
 
