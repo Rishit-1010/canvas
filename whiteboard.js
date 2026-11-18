@@ -253,12 +253,15 @@
         break;
       }
       case 'dot': {
-        c.beginPath(); c.arc(o.x, o.y, Math.max(4, o.size) - .5, 0, TAU);
-        c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#fff'; c.stroke();
+        // points and their labels keep the same size ON SCREEN at every zoom level, so they stay readable when zoomed out
+        const k = 1 / board().s;
+        c.beginPath(); c.arc(o.x, o.y, (Math.max(4, o.size) - .5) * k, 0, TAU);
+        c.fill(); c.lineWidth = 1.5 * k; c.strokeStyle = '#fff'; c.stroke();
         if (o.label && !o.labelHidden) {
-          ensureFont('Quicksand', 15);
-          c.fillStyle = o.color; c.font = '700 15px Quicksand, sans-serif'; c.textBaseline = 'alphabetic';
-          c.fillText(o.label, o.x + 8, o.y - 9);
+          ensureFont('Quicksand', 16);
+          c.font = `700 ${16 * k}px Quicksand, sans-serif`; c.textBaseline = 'alphabetic';
+          c.lineWidth = 3.5 * k; c.strokeStyle = 'rgba(255,255,255,.9)'; c.strokeText(o.label, o.x + 8 * k, o.y - 9 * k);   // white halo
+          c.fillStyle = o.color; c.fillText(o.label, o.x + 8 * k, o.y - 9 * k);
         }
         break;
       }
@@ -291,8 +294,9 @@
         break;
       }
       case 'label': {
+        const k = 1 / board().s;                                   // labels also keep their on-screen size
         ensureFont('Quicksand', o.fs);
-        c.font = `700 ${o.fs}px Quicksand, sans-serif`; c.textBaseline = 'alphabetic';
+        c.font = `700 ${o.fs * k}px Quicksand, sans-serif`; c.textBaseline = 'alphabetic';
         c.fillText(o.text, o.x, o.y);
         break;
       }

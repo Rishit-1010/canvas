@@ -373,7 +373,8 @@
           v = { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
           cur = add(cur, v); pts.push(P(cur));
         }
-        return [mk('poly', { pts })];
+        // the two clicked corners already have labelled points; label every other corner too
+        return [mk('poly', { pts }), ...pts.slice(2).map(p => dotObj(p, o.label()))];
       }, { ask: { title: 'Regular Polygon', label: 'Vertices', unit: '', def: 5, integer: true, min: 3, max: 100 } }),
 
     /* ===== Circles & arcs ===== */
