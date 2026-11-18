@@ -194,11 +194,12 @@
     const isPreset = c => colors.some(p => same(p, c));
     if (!lastCustom && value && !isPreset(value)) lastCustom = value;     // a custom colour is already in use
 
-    const btns = colors.map(c => h('button', { class: 'sw', type: 'button', title: c, style: { background: c }, onclick: () => {
+    const btns = colors.map(c => h('button', { class: 'sw' + (luminance(c) > 0.8 ? ' light' : ''), type: 'button', title: c, style: { background: c }, onclick: () => {
       cur = c; mark(); onPick(c); if (picker) picker.set(c, true);
     } }));
     // slot for the user's custom colour (sits immediately left of the rainbow button)
     const slot = h('button', { class: 'sw sw-slot', type: 'button', title: 'Your custom colour', onclick: () => {
+      if (!lastCustom) { rainbow.click(); return; }          // still empty: open the picker instead
       cur = lastCustom; mark(); onPick(cur); if (picker) picker.set(cur, true);
     } });
     const rainbow = h('button', { class: 'sw sw-custom', type: 'button', title: 'Custom colour', html: ICONS.plus, onclick: () => {
@@ -209,8 +210,9 @@
 
     function mark() {
       btns.forEach((b, i) => b.classList.toggle('active', same(colors[i], cur)));
-      slot.hidden = !lastCustom;
-      if (lastCustom) { slot.style.background = lastCustom; slot.classList.toggle('active', same(lastCustom, cur)); }
+      slot.classList.toggle('empty', !lastCustom);          // an empty slot is drawn as a dashed ring
+      slot.style.background = lastCustom || '';
+      slot.classList.toggle('active', !!lastCustom && same(lastCustom, cur));
       rainbow.classList.toggle('active', !!picker);
     }
     mark();

@@ -40,7 +40,7 @@
   /* ---------------------------------------------------------
      2. Options offered in the dialogs
      --------------------------------------------------------- */
-  const COLORS = ['#000000', '#000455', '#E53935', '#FB8C00', '#FDD835', '#43A047', '#1E88E5', '#8E24AA', '#EC407A'];
+  const COLORS = ['#000000', '#000455', '#E53935', '#FB8C00', '#FDD835', '#43A047', '#1E88E5', '#8E24AA'];   // 8 presets + custom slot + rainbow = two full rows of 5
   const BACKDROP_COLORS = ['#FFFFFF', '#FFF8E1', '#F1F3F4', '#E3F2FD', '#E8F5E9', '#FCE4EC', '#0B0F2F', '#111111'];
   const FONTS = ['Times New Roman', 'Quicksand', 'Anta', 'Anton', 'Inter', 'Parkinsans', 'Roboto', 'Poppins', 'Montserrat', 'Raleway', 'Lato',
     'Oswald', 'Bebas Neue', 'Space Grotesk', 'Playfair Display', 'Merriweather', 'Lobster', 'Pacifico', 'Caveat', 'Dancing Script', 'Roboto Mono'];
@@ -1214,7 +1214,7 @@
       });
       return h('div', {},
         section('Colour', UI.swatches({ colors: BACKDROP_COLORS, value: bd.color, onPick: c => { bd.color = c; apply(); } })),
-        section('Pattern', UI.grid({ items: PATTERNS, value: bd.pattern, cols: 6, onPick: id => { bd.pattern = id; apply(); rerenderPopover(); } })),
+        section('Pattern', UI.grid({ items: PATTERNS, value: bd.pattern, cols: 3, onPick: id => { bd.pattern = id; apply(); rerenderPopover(); } })),
         bd.pattern !== 'none' ? section('Pattern spacing', UI.slider({ min: 16, max: 96, value: bd.spacing, unit: ' px', onInput: v => { bd.spacing = v; apply(); } })) : null,
         section('Image', h('div', { class: 'btn-row' },
           h('button', { class: 'btn', type: 'button', html: ICONS.upload + '<span>Upload image</span>', onclick: () => fileIn.click() }),
@@ -1222,6 +1222,23 @@
           fileIn));
     }
   };
+
+  /* Backdrop works like Clear: it opens a centred modal (it is not a "tool", so the button never turns navy) */
+  let modalRerender = null;
+  function openBackdropModal() {
+    const modal = $('#modal');
+    const body = h('div', { class: 'bd-body' });
+    const close = () => { modal.classList.remove('open'); modal.innerHTML = ''; modalRerender = null; };
+    modalRerender = () => { const st = body.scrollTop; body.replaceChildren(panels.backdrop()); body.scrollTop = st; };
+    modalRerender();
+    modal.innerHTML = '';
+    modal.append(h('div', { class: 'modal-card bd-card', role: 'dialog', 'aria-label': 'Backdrop' },
+      h('button', { class: 'pop-x', type: 'button', title: 'Close', 'aria-label': 'Close', html: ICONS.close, onclick: close }),
+      h('h3', { text: 'Backdrop' }), body,
+      h('div', { class: 'btn-row' }, h('button', { class: 'btn primary', type: 'button', text: 'Done', onclick: close }))));
+    modal.classList.add('open');
+    modal.onclick = e => { if (e.target === modal) close(); };
+  }
 
   function setBackdropImage(src) {
     const bd = board().backdrop;
@@ -1232,6 +1249,7 @@
 
   /* The dialog is a speech bubble: .pop-body (white, inner shadow, scrolls) plus a small tail (.pop-tail)
      pointing at the tool button that opened it. Pen / Eraser / Select use the narrow 200px bubble from the design. */
+  const DIALOG_H = 300;                       // height of the scrolling area of every dialog, in px
   const NARROW = ['pen', 'eraser', 'select'];
   function fillPopover() {
     popScroll.replaceChildren(panels[pop.kind]());
@@ -1246,6 +1264,7 @@
     positionPopover();
   }
   function rerenderPopover() {
+    if (modalRerender) { modalRerender(); return; }            // the Backdrop modal is open
     if (!pop.kind) return;
     const st = popScroll.scrollTop;
     fillPopover();
@@ -1275,7 +1294,7 @@
   function positionPopover() {
     if (!pop.anchor) return;
     const a = pop.anchor.getBoundingClientRect();
-    popScroll.style.maxHeight = Math.max(100, a.top - 3 - 17 - 40 - 12) + 'px';   // room above the button, minus bubble padding and a top margin
+    popScroll.style.height = Math.max(100, Math.min(DIALOG_H, a.top - 3 - 17 - 40 - 12)) + 'px';   // every dialog has the same height (content scrolls); shrinks only if the screen is too short
     popover.style.bottom = (H - a.top + 3) + 'px';
     const w = popover.offsetWidth;
     const left = UI.clamp(a.left + a.width / 2 - w / 2, 10, Math.max(10, W - w - 10));
@@ -1389,8 +1408,8 @@
       const btn = e.target.closest('[data-tool]'); if (!btn) return;
       const t = btn.dataset.tool;
       if (t === 'clear') { confirmClear(); return; }
+      if (t === 'backdrop') { closePopover(); openBackdropModal(); return; }   // like Clear: a modal, the button is not selected
       const current = state.tool === 'tools' ? 'shapes' : state.tool;
-      if (t === 'backdrop' && current !== 'backdrop') { setTool('backdrop'); openPopover('backdrop', btn); return; }   // Backdrop: dialog opens on the first click
       if (current !== t) { closePopover(); setTool(t); return; }      // other tools: first click just selects the tool
       if (t === 'move') return;                                       // Move has no dialog
       togglePopover(t, btn);                                          // clicking the active tool again: dialog
