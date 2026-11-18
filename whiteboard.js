@@ -923,6 +923,28 @@
   const NS = 'http://www.w3.org/2000/svg';
   const svgEl = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
 
+  /* Snapping: instruments click onto points made with the geometry tools.
+     "keys" are the instrument's own key points (corners, centre …); if one comes within SNAP px of a point,
+     the whole instrument is nudged so that the two coincide. */
+  const SNAP = 16;
+  const dotsOnScreen = () => board().objects.filter(o => o.type === 'dot').map(o => toScreen(o));
+  function nearestDot(p) {
+    let best = null, bd = SNAP;
+    for (const d of dotsOnScreen()) { const k = Math.hypot(d.x - p.x, d.y - p.y); if (k <= bd) { best = d; bd = k; } }
+    return best;
+  }
+  /* shifts (inst.x, inst.y) so the closest key point lands exactly on a nearby point; keys are in the instrument's local pixels */
+  function snapInstrument(inst, keys) {
+    const c = Math.cos(inst.rot || 0), s = Math.sin(inst.rot || 0);
+    let best = null, bd = SNAP;
+    for (const k of keys) {
+      const p = { x: inst.x + k.x * c - k.y * s, y: inst.y + k.x * s + k.y * c };
+      const d = nearestDot(p);
+      if (d) { const dist = Math.hypot(d.x - p.x, d.y - p.y); if (dist <= bd) { bd = dist; best = { dx: d.x - p.x, dy: d.y - p.y }; } }
+    }
+    if (best) { inst.x += best.dx; inst.y += best.dy; }
+  }
+
   /* generic drag helper for a handle element */
   function makeDrag(el, { down, move, up }) {
     el.addEventListener('pointerdown', e => {
@@ -950,7 +972,7 @@
         if (mm % 10 === 0 && mm > 0 && mm < cm * 10) t += `<text x="${x}" y="33" text-anchor="middle" stroke="none" fill="#000455" font-size="11" font-family="Anta, sans-serif">${mm / 10}</text>`;
       }
       return { svg: `<svg width="${L}" height="${Hh}"><rect width="${L}" height="${Hh}" rx="4" fill="rgba(224,226,255,.72)" stroke="#000455" stroke-width="1.5"/><g stroke="#000455" stroke-width="1">${t}</g></svg>`,
-        ox: 0, oy: 0, grip: { x: L / 2, y: Hh - 15 }, rot: { x: L - 20, y: Hh - 15 }, del: { x: 20, y: Hh - 15 } };
+        keys: [{ x: 0, y: 0 }, { x: L, y: 0 }, { x: 0, y: Hh }, { x: L, y: Hh }], ox: 0, oy: 0, grip: { x: L / 2, y: Hh - 15 }, rot: { x: L - 20, y: Hh - 15 }, del: { x: 20, y: Hh - 15 } };
     },
     sq45() {
       const L = Math.min(260, W - 90);
@@ -958,7 +980,7 @@
       const inner = `M${.15 * L} ${.4 * L} L${.15 * L} ${.85 * L} L${.6 * L} ${.85 * L} Z`;
       let t = ''; for (let k = 1; k * PX_CM < L; k++) t += `<line x1="${k * PX_CM}" y1="${L}" x2="${k * PX_CM}" y2="${L - (k % 5 ? 8 : 14)}"/>`;
       return { svg: `<svg width="${L}" height="${L}"><path d="${outer} ${inner}" fill-rule="evenodd" fill="rgba(224,226,255,.72)" stroke="#000455" stroke-width="1.5"/><g stroke="#000455">${t}</g></svg>`,
-        ox: 0, oy: 0, grip: { x: .3 * L, y: .68 * L }, rot: { x: .78 * L, y: .92 * L }, del: { x: .07 * L, y: .22 * L } };
+        keys: [{ x: 0, y: 0 }, { x: 0, y: L }, { x: L, y: L }], ox: 0, oy: 0, grip: { x: .3 * L, y: .68 * L }, rot: { x: .78 * L, y: .92 * L }, del: { x: .07 * L, y: .22 * L } };
     },
     sq30() {
       let Hh = 200, Wd = Hh * Math.sqrt(3);
@@ -967,7 +989,7 @@
       const inner = `M${.1 * Wd} ${.42 * Hh} L${.1 * Wd} ${.86 * Hh} L${.55 * Wd} ${.86 * Hh} Z`;
       let t = ''; for (let k = 1; k * PX_CM < Wd; k++) t += `<line x1="${k * PX_CM}" y1="${Hh}" x2="${k * PX_CM}" y2="${Hh - (k % 5 ? 8 : 14)}"/>`;
       return { svg: `<svg width="${Wd}" height="${Hh}"><path d="${outer} ${inner}" fill-rule="evenodd" fill="rgba(224,226,255,.72)" stroke="#000455" stroke-width="1.5"/><g stroke="#000455">${t}</g></svg>`,
-        ox: 0, oy: 0, grip: { x: .26 * Wd, y: .68 * Hh }, rot: { x: .78 * Wd, y: .93 * Hh }, del: { x: .05 * Wd, y: .22 * Hh } };
+        keys: [{ x: 0, y: 0 }, { x: 0, y: Hh }, { x: Wd, y: Hh }], ox: 0, oy: 0, grip: { x: .26 * Wd, y: .68 * Hh }, rot: { x: .78 * Wd, y: .93 * Hh }, del: { x: .05 * Wd, y: .22 * Hh } };
     },
     protractor() {
       const R = Math.min(170, (W - 60) / 2), cx = R + 10, cy = R + 10;
@@ -981,7 +1003,7 @@
         }
       }
       return { svg: `<svg width="${2 * R + 20}" height="${R + 20}"><path d="M10 ${cy} A${R} ${R} 0 0 1 ${2 * R + 10} ${cy} Z" fill="rgba(224,226,255,.72)" stroke="#000455" stroke-width="1.5"/><g stroke="#000455" stroke-width="1">${t}</g><path d="M${cx - 8} ${cy} h16 M${cx} ${cy - 8} v8" stroke="#000455" stroke-width="1.2"/></svg>`,
-        ox: -(R + 10), oy: -(R + 10), grip: { x: 0, y: -R * .35 }, rot: { x: R - 26, y: -14 }, del: { x: -(R - 26), y: -14 } };
+        keys: [{ x: 0, y: 0 }, { x: -R, y: 0 }, { x: R, y: 0 }], ox: -(R + 10), oy: -(R + 10), grip: { x: 0, y: -R * .35 }, rot: { x: R - 26, y: -14 }, del: { x: -(R - 26), y: -14 } };
     }
   };
 
@@ -1000,7 +1022,7 @@
       [grip, rot, del].forEach(hd => { hd.style.transform = `rotate(${-inst.rot}rad)`; });   // keep icons upright
     };
     apply();
-    makeDrag(grip, { down: e => ({ sx: e.clientX, sy: e.clientY, x: inst.x, y: inst.y }), move: (e, s) => { inst.x = s.x + e.clientX - s.sx; inst.y = s.y + e.clientY - s.sy; apply(); } });
+    makeDrag(grip, { down: e => ({ sx: e.clientX, sy: e.clientY, x: inst.x, y: inst.y }), move: (e, s) => { inst.x = s.x + e.clientX - s.sx; inst.y = s.y + e.clientY - s.sy; snapInstrument(inst, spec.keys); apply(); } });
     const base = Math.atan2(spec.rot.y, spec.rot.x);
     makeDrag(rot, { down: () => ({}), move: e => { inst.rot = Math.atan2(e.clientY - inst.y, e.clientX - inst.x) - base; apply(); } });
     makeDrag(del, { down: () => ({}), up: () => removeInstrument(inst.id) });
@@ -1063,10 +1085,18 @@
     }
     update();
 
-    makeDrag(hP, { down: e => ({ sx: e.clientX, sy: e.clientY, x: inst.x, y: inst.y }), move: (e, s) => { inst.x = s.x + e.clientX - s.sx; inst.y = s.y + e.clientY - s.sy; update(); } });
+    makeDrag(hP, { down: e => ({ sx: e.clientX, sy: e.clientY, x: inst.x, y: inst.y }), move: (e, s) => {
+      inst.x = s.x + e.clientX - s.sx; inst.y = s.y + e.clientY - s.sy;
+      const keys = [{ x: 0, y: 0 }, { x: inst.r * Math.cos(inst.ang), y: inst.r * Math.sin(inst.ang) }];   // needle point and pencil tip
+      const rr = inst.rot; inst.rot = 0; snapInstrument(inst, keys); inst.rot = rr;
+      update();
+    } });
     makeDrag(hT, { down: () => ({}), move: e => {
-      inst.r = Math.max(20, Math.hypot(e.clientX - inst.x, e.clientY - inst.y));
-      inst.ang = Math.atan2(e.clientY - inst.y, e.clientX - inst.x);
+      let tx = e.clientX, ty = e.clientY;
+      const d = nearestDot({ x: tx, y: ty });                          // pencil tip clicks onto a point
+      if (d) { tx = d.x; ty = d.y; }
+      inst.r = Math.max(20, Math.hypot(tx - inst.x, ty - inst.y));
+      inst.ang = Math.atan2(ty - inst.y, tx - inst.x);
       update();
     } });
     makeDrag(hH, {
@@ -1249,7 +1279,7 @@
 
   /* The dialog is a speech bubble: .pop-body (white, inner shadow, scrolls) plus a small tail (.pop-tail)
      pointing at the tool button that opened it. Pen / Eraser / Select use the narrow 200px bubble from the design. */
-  const DIALOG_H = 300;                       // height of the scrolling area of every dialog, in px
+  const DIALOG_H = 150;                       // height of the scrolling area of every dialog, in px
   const NARROW = ['pen', 'eraser', 'select'];
   function fillPopover() {
     popScroll.replaceChildren(panels[pop.kind]());
