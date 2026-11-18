@@ -176,28 +176,38 @@
     });
   }
 
-  /* row of preset colours + a "+" button that opens the colour picker */
+  /* Row of preset colours, then (once the user has picked one) their custom colour, then the rainbow
+     "+" button that opens the colour picker. The custom colour is remembered for every dialog. */
+  let lastCustom = null;
   function swatches({ colors, value, onPick }) {
     let cur = value;
     let picker = null;
     const holder = h('div');
-    const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+    const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+    const isPreset = c => colors.some(p => same(p, c));
+    if (!lastCustom && value && !isPreset(value)) lastCustom = value;     // a custom colour is already in use
 
     const btns = colors.map(c => h('button', { class: 'sw', type: 'button', title: c, style: { background: c }, onclick: () => {
       cur = c; mark(); onPick(c); if (picker) picker.set(c, true);
     } }));
-    const custom = h('button', { class: 'sw sw-custom', type: 'button', title: 'Custom colour', html: ICONS.plus, onclick: () => {
-      if (picker) { picker.el.remove(); picker = null; return; }
-      picker = colorPicker(cur, hex => { cur = hex; mark(); onPick(hex); });
-      holder.append(picker.el);
+    // slot for the user's custom colour (sits immediately left of the rainbow button)
+    const slot = h('button', { class: 'sw sw-slot', type: 'button', title: 'Your custom colour', onclick: () => {
+      cur = lastCustom; mark(); onPick(cur); if (picker) picker.set(cur, true);
+    } });
+    const rainbow = h('button', { class: 'sw sw-custom', type: 'button', title: 'Custom colour', html: ICONS.plus, onclick: () => {
+      if (picker) { picker.el.remove(); picker = null; mark(); return; }
+      picker = colorPicker(cur, hex => { cur = hex; if (!isPreset(hex)) lastCustom = hex; mark(); onPick(hex); });
+      holder.append(picker.el); mark();
     } });
 
     function mark() {
       btns.forEach((b, i) => b.classList.toggle('active', same(colors[i], cur)));
-      custom.classList.toggle('active', !colors.some(c => same(c, cur)));
+      slot.hidden = !lastCustom;
+      if (lastCustom) { slot.style.background = lastCustom; slot.classList.toggle('active', same(lastCustom, cur)); }
+      rainbow.classList.toggle('active', !!picker);
     }
     mark();
-    return h('div', {}, h('div', { class: 'swatches' }, ...btns, custom), holder);
+    return h('div', {}, h('div', { class: 'swatches' }, ...btns, slot, rainbow), holder);
   }
 
   /* grid of icon buttons (shapes, patterns, geometry tools …); labels:true shows the name under each icon */

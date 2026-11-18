@@ -33,7 +33,7 @@
   const ov = ovCanvas.getContext('2d');
   const mctx = document.createElement('canvas').getContext('2d');   // scratch context for measuring text
   const instLayer = $('#instruments'), textLayer = $('#textLayer');
-  const popover = $('#popover'), popBody = $('#popover .pop-body'), popBg = $('#popover .pop-bg'), popPath = $('#popover .pop-bg path'), selBar = $('#selBar'), hintEl = $('#hint'), zoomBadge = $('#zoomBadge');
+  const popover = $('#popover'), popBody = $('#popover .pop-body'), popScroll = $('#popover .pop-scroll'), popBg = $('#popover .pop-bg'), popPath = $('#popover .pop-bg path'), selBar = $('#selBar'), hintEl = $('#hint'), zoomBadge = $('#zoomBadge');
   const toolBar = $('#toolBar'), boardBar = $('#boardBar'), boardLabel = $('#boardLabel');
   const undoBtn = $('#undoBtn'), redoBtn = $('#redoBtn'), prevBtn = $('#prevBoard'), nextBtn = $('#nextBoard');
 
@@ -1184,7 +1184,7 @@
      pointing at the tool button that opened it. Pen / Eraser / Select use the narrow 200px bubble from the design. */
   const NARROW = ['pen', 'eraser', 'select'];
   function fillPopover() {
-    popBody.replaceChildren(panels[pop.kind]());
+    popScroll.replaceChildren(panels[pop.kind]());
     popover.classList.toggle('narrow', NARROW.includes(pop.kind));
     popover.classList.toggle('wide', pop.kind === 'tools');
     popover.classList.toggle('pop-text', pop.kind === 'text');
@@ -1197,10 +1197,10 @@
   }
   function rerenderPopover() {
     if (!pop.kind) return;
-    const st = popBody.scrollTop;
+    const st = popScroll.scrollTop;
     fillPopover();
     positionPopover();
-    popBody.scrollTop = st;
+    popScroll.scrollTop = st;
   }
   function closePopover() { pop = { kind: null, anchor: null }; popover.classList.remove('open'); }
   function togglePopover(kind, anchor) { if (pop.kind === kind) closePopover(); else openPopover(kind, anchor); }
@@ -1208,13 +1208,16 @@
   /* Draws the bubble outline (exactly the design's shape): rounded box of size w x bh (radius 30)
      with a 17px tail whose tip is at x = cx on the bottom edge. */
   function drawBubble(w, bh, cx) {
-    const r = 30, k = 13.431, t = bh, X = v => +(cx + v).toFixed(2), Y = v => +(t + v).toFixed(2);
+    const R = 30, X = v => +(cx + v).toFixed(2), Y = v => +(bh + v).toFixed(2);
+    // bottom corners get smaller when the tail is close to them (e.g. above the first tool)
+    const rl = Math.max(4, Math.min(R, cx - 15.306)), rr = Math.max(4, Math.min(R, w - cx - 15.306));
+    const kk = r => +(r * 0.4477).toFixed(3);                          // circle-like bezier handle
     popPath.setAttribute('d',
-      `M${r} 0H${w - r}C${w - k} 0 ${w} ${r - k} ${w} ${r}V${bh - r}C${w} ${bh - r + k} ${w - k} ${bh} ${w - r} ${bh}` +
+      `M${R} 0H${w - R}C${w - kk(R)} 0 ${w} ${kk(R)} ${w} ${R}V${bh - rr}C${w} ${bh - kk(rr)} ${w - kk(rr)} ${bh} ${w - rr} ${bh}` +
       `H${X(15.306)}C${X(14.344)} ${Y(0)} ${X(13.441)} ${Y(0.461)} ${X(12.877)} ${Y(1.239)}L${X(2.429)} ${Y(15.65)}` +
       `C${X(1.231)} ${Y(17.302)} ${X(-1.231)} ${Y(17.302)} ${X(-2.429)} ${Y(15.65)}L${X(-12.877)} ${Y(1.239)}` +
-      `C${X(-13.441)} ${Y(0.461)} ${X(-14.344)} ${Y(0)} ${X(-15.306)} ${Y(0)}H${r}` +
-      `C${k} ${bh} 0 ${bh - r + k} 0 ${bh - r}V${r}C0 ${r - k} ${k} 0 ${r} 0Z`);
+      `C${X(-13.441)} ${Y(0.461)} ${X(-14.344)} ${Y(0)} ${X(-15.306)} ${Y(0)}H${rl}` +
+      `C${kk(rl)} ${bh} 0 ${bh - kk(rl)} 0 ${bh - rl}V${R}C0 ${kk(R)} ${kk(R)} 0 ${R} 0Z`);
     popBg.setAttribute('width', w); popBg.setAttribute('height', bh + 17);
   }
 
@@ -1222,13 +1225,12 @@
   function positionPopover() {
     if (!pop.anchor) return;
     const a = pop.anchor.getBoundingClientRect();
-    const bars = Math.min(toolBar.getBoundingClientRect().top, boardBar.getBoundingClientRect().top);
-    popBody.style.maxHeight = Math.max(140, bars - 24 - 17) + 'px';
+    popScroll.style.maxHeight = Math.max(100, a.top - 3 - 17 - 40 - 12) + 'px';   // room above the button, minus bubble padding and a top margin
     popover.style.bottom = (H - a.top + 3) + 'px';
     const w = popover.offsetWidth;
     const left = UI.clamp(a.left + a.width / 2 - w / 2, 10, Math.max(10, W - w - 10));
     popover.style.left = left + 'px';
-    drawBubble(w, popBody.offsetHeight, UI.clamp(a.left + a.width / 2 - left, 45, w - 45));
+    drawBubble(w, popBody.offsetHeight, UI.clamp(a.left + a.width / 2 - left, 22, w - 22));
   }
 
   /* ---------------------------------------------------------
@@ -1319,6 +1321,9 @@
       const unit = e.deltaMode === 1 ? 16 : 1;
       zoomAt(board().s * Math.exp(-e.deltaY * unit * (e.ctrlKey ? 0.005 : 0.0015)), pos(e));
     }, { passive: false });
+
+    // keep the bubble outline and tail in step with the content (colour picker opening, custom swatch appearing …)
+    if (window.ResizeObserver) new ResizeObserver(() => { if (pop.kind) positionPopover(); }).observe(popScroll);
 
     // clicks outside the dialog close it
     document.addEventListener('pointerdown', e => {
