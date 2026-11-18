@@ -78,7 +78,7 @@
 
     /* ---------- physical instruments ---------- */
     i_ruler: s('<rect x="2.5" y="8" width="19" height="8" rx="1.5"/><path d="M6 8v3M9.5 8v4.5M13 8v3M16.5 8v4.5"/>'),
-    i_compass: s('<circle cx="12" cy="4.5" r="1.5"/><path d="M12 6L7 20M12 6l5 14M9 14h6"/>'),
+    i_compass: s('<circle cx="12" cy="3.6" r="1.5"/><path d="M12 5.1v2.4"/><circle cx="12" cy="8.6" r="1.1"/><path d="M11.2 9.5 6.8 20.6M12.8 9.5l4.4 8.6M9 15.4h6.2"/><path d="M17.2 18.1l.9 2.7 1.6-2.2z"/>'),
     i_sq45: s('<path d="M4 4v16h16z"/><path d="M8 12v4h4z"/>'),
     i_sq30: s('<path d="M4 19V8l16 11z"/><path d="M8 19v-3"/>'),
     i_protractor: s('<path d="M3 18a9 9 0 0 1 18 0z"/><path d="M12 18v-3M6.5 13.5l1.2 1M17.5 13.5l-1.2 1"/>'),

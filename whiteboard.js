@@ -73,7 +73,7 @@
     select: { mode: 'free' },
     shape: { kind: 'line', size: 3, color: '#000455', dash: 'solid' },
     text: { font: 'Quicksand', size: 28, color: '#000455' },
-    geo: { tool: null, sides: 5 }
+    geo: { tool: null, tab: 'shapes' }       // tab: shapes | tools | instruments (the Geometry dialog)
   };
 
   const newBoard = () => ({
@@ -1012,26 +1012,53 @@
   function buildCompass(inst) {
     const el = h('div', { class: 'inst compass' });
     const svg = svgEl('svg', { class: 'inst-full' });
-    const needle = svgEl('line', { stroke: '#000455', 'stroke-width': 4, 'stroke-linecap': 'round' });
-    const pencil = svgEl('line', { stroke: '#000455', 'stroke-width': 4, 'stroke-linecap': 'round' });
-    const tipMark = svgEl('circle', { r: 3, fill: '#000455' });
-    const hinge = svgEl('circle', { r: 6, fill: '#E0E2FF', stroke: '#000455', 'stroke-width': 3 });
-    svg.append(needle, pencil, tipMark, hinge);
+    const INK = '#000455', LAV = '#E0E2FF';
+    // artwork pieces (drawn in this order): two tapered legs, pencil lead, needle point, hinge, top handle
+    const needleLeg = svgEl('path', { fill: LAV, stroke: INK, 'stroke-width': 2, 'stroke-linejoin': 'round' });
+    const needleTip = svgEl('path', { fill: INK });
+    const pencilLeg = svgEl('path', { fill: LAV, stroke: INK, 'stroke-width': 2, 'stroke-linejoin': 'round' });
+    const barrel = svgEl('path', { fill: '#fff', stroke: INK, 'stroke-width': 2, 'stroke-linejoin': 'round' });
+    const lead = svgEl('path', { fill: INK });
+    const stem = svgEl('line', { stroke: INK, 'stroke-width': 5, 'stroke-linecap': 'round' });
+    const knob = svgEl('circle', { r: 7, fill: LAV, stroke: INK, 'stroke-width': 2.5 });
+    const hinge = svgEl('circle', { r: 8, fill: LAV, stroke: INK, 'stroke-width': 2.5 });
+    const hingeDot = svgEl('circle', { r: 2.2, fill: INK });
+    svg.append(needleLeg, needleTip, pencilLeg, barrel, lead, stem, knob, hinge, hingeDot);
     const hP = handle('move4', 'Move compass', 0, 0), hT = handle('tip', 'Set radius', 0, 0, true), hH = handle('rotate', 'Swing to draw an arc', 0, 0), hD = handle('close', 'Remove', 0, 0, true);
     el.append(svg, hP, hT, hH, hD);
 
+    // a leg: tapered strip from a (width w1) to b (width w2)
+    const strip = (a, b, w1, w2) => {
+      const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, nx = -(b.y - a.y) / d, ny = (b.x - a.x) / d;
+      const p = (q, w, s) => (q.x + nx * w * s).toFixed(1) + ' ' + (q.y + ny * w * s).toFixed(1);
+      return `M${p(a, w1, 1)}L${p(b, w2, 1)}L${p(b, w2, -1)}L${p(a, w1, -1)}Z`;
+    };
+    const along = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    const back = (a, b, px) => { const d = Math.hypot(b.x - a.x, b.y - a.y) || 1; return along(b, a, px / d); };   // point px before b, towards a
+
     function update() {
-      const r = inst.r, tx = inst.x + r * Math.cos(inst.ang), ty = inst.y + r * Math.sin(inst.ang);
-      const mx = (inst.x + tx) / 2, my = (inst.y + ty) / 2;
+      const r = inst.r, N = { x: inst.x, y: inst.y }, T = { x: inst.x + r * Math.cos(inst.ang), y: inst.y + r * Math.sin(inst.ang) };
+      const mx = (N.x + T.x) / 2, my = (N.y + T.y) / 2;
       const nx = Math.sin(inst.ang), ny = -Math.cos(inst.ang);
       const leg = Math.max(140, r / 2 + 50), ht = Math.sqrt(Math.max(leg * leg - (r / 2) ** 2, 400));
-      const hx = mx + nx * ht, hy = my + ny * ht;
-      needle.setAttribute('x1', inst.x); needle.setAttribute('y1', inst.y); needle.setAttribute('x2', hx); needle.setAttribute('y2', hy);
-      pencil.setAttribute('x1', tx); pencil.setAttribute('y1', ty); pencil.setAttribute('x2', hx); pencil.setAttribute('y2', hy);
-      tipMark.setAttribute('cx', tx); tipMark.setAttribute('cy', ty);
-      hinge.setAttribute('cx', hx); hinge.setAttribute('cy', hy);
-      const put = (hd, x, y) => { hd.style.left = x + 'px'; hd.style.top = y + 'px'; };
-      put(hP, inst.x, inst.y); put(hT, tx, ty); put(hH, hx, hy); put(hD, inst.x, inst.y + 30);
+      const Hn = { x: mx + nx * ht, y: my + ny * ht };
+      // needle leg ends in a sharp steel point
+      const nb = back(Hn, N, 16);
+      needleLeg.setAttribute('d', strip(Hn, nb, 6, 2.6));
+      needleTip.setAttribute('d', strip(nb, N, 2.6, 0.2));
+      // pencil leg, then the wooden barrel and the dark lead
+      const pq = back(Hn, T, 46), pb = back(Hn, T, 16);
+      pencilLeg.setAttribute('d', strip(Hn, pq, 6, 4.8));
+      barrel.setAttribute('d', strip(pq, pb, 5.2, 5.2));
+      lead.setAttribute('d', strip(pb, T, 5.2, 0.8));
+      // hinge with a small handle on top, pointing away from the legs
+      const hd = Math.hypot(Hn.x - mx, Hn.y - my) || 1, ux = (Hn.x - mx) / hd, uy = (Hn.y - my) / hd;
+      stem.setAttribute('x1', Hn.x); stem.setAttribute('y1', Hn.y); stem.setAttribute('x2', Hn.x + ux * 18); stem.setAttribute('y2', Hn.y + uy * 18);
+      knob.setAttribute('cx', Hn.x + ux * 24); knob.setAttribute('cy', Hn.y + uy * 24);
+      hinge.setAttribute('cx', Hn.x); hinge.setAttribute('cy', Hn.y);
+      hingeDot.setAttribute('cx', Hn.x); hingeDot.setAttribute('cy', Hn.y);
+      const put = (hdl, x, y) => { hdl.style.left = x + 'px'; hdl.style.top = y + 'px'; };
+      put(hP, N.x, N.y); put(hT, T.x, T.y); put(hH, Hn.x, Hn.y); put(hD, N.x, N.y + 30);
       requestOverlay();
     }
     update();
@@ -1074,7 +1101,7 @@
     const b = board();
     b.instruments = b.instruments.filter(i => i.id !== id);
     renderInstruments(); requestOverlay();
-    if (pop.kind === 'tools') rerenderPopover();
+    if (pop.kind === 'shapes') rerenderPopover();
   }
   function toggleInstrument(type) {
     const b = board();
@@ -1085,13 +1112,37 @@
     if (type === 'protractor') Object.assign(inst, { x: W / 2, y: H / 2 + 80 });
     b.instruments.push(inst);
     renderInstruments();
-    if (pop.kind === 'tools') rerenderPopover();
+    if (pop.kind === 'shapes') rerenderPopover();
   }
 
   /* ---------------------------------------------------------
      15. Option dialogs (popovers)
      --------------------------------------------------------- */
   const title = UI.title, section = UI.section;
+
+  /* content of the three Geometry tabs */
+  function geoTabBody() {
+    if (state.geo.tab === 'tools') {
+      const active = Geo.byId[state.geo.tool];
+      return h('div', {},
+        ...Geo.GROUPS.map(gr => h('div', {},
+          h('div', { class: 'geo-group', text: gr }),
+          UI.grid({ items: Geo.TOOLS.filter(t => t.group === gr), value: state.geo.tool, cols: 4, labels: true, onPick: id => setGeoTool(id) }))),
+        active ? h('div', { class: 'hint-line', text: active.name + ' — ' + active.hint }) : h('div', { class: 'hint-line', text: 'Pick a tool, then click on the board.' }));
+    }
+    if (state.geo.tab === 'instruments') {
+      const b = board();
+      const items = INSTRUMENTS.map(it => ({ id: it.id, label: it.label, icon: it.icon }));
+      const grid = UI.grid({ items, value: null, cols: 3, labels: true, onPick: id => toggleInstrument(id) });
+      grid.querySelectorAll('.opt').forEach((btn, i) => btn.classList.toggle('active', b.instruments.some(x => x.type === items[i].id)));
+      return h('div', {}, grid, h('div', { class: 'pop-note', style: { marginTop: '12px' }, text: 'Drag the round handles to move, rotate or remove an instrument. Swing the compass hinge to draw an arc.' }));
+    }
+    return h('div', {},
+      section('Shape', UI.grid({ items: SHAPES, value: state.shape.kind, cols: 6, onPick: id => { state.shape.kind = id; rerenderPopover(); } })),
+      section('Line style', UI.grid({ items: LINE_STYLES, value: state.shape.dash, cols: 3, onPick: id => { state.shape.dash = id; rerenderPopover(); } })),
+      section('Thickness', UI.slider({ min: 1, max: 20, value: state.shape.size, unit: '', onInput: v => { state.shape.size = v; } })),
+      section('Colour', UI.swatches({ colors: COLORS, value: state.shape.color, onPick: c => { state.shape.color = c; } })));
+  }
 
   const panels = {
     select() {
@@ -1119,29 +1170,20 @@
         state.eraser.mode === 'normal' ? section('Size', UI.slider({ min: 4, max: 100, value: state.eraser.size, unit: '', onInput: v => { state.eraser.size = v; } })) : null);
     },
 
+    /* Geometry dialog: three tabs — Shapes (freehand-style shapes), Tools (GeoGebra / Desmos constructions),
+       Instruments (scale, compass, set squares, protractor) */
     shapes() {
-      return h('div', {},
-                section('Shape', UI.grid({ items: SHAPES, value: state.shape.kind, cols: 6, onPick: id => { state.shape.kind = id; rerenderPopover(); } })),
-        section('Line style', UI.grid({ items: LINE_STYLES, value: state.shape.dash, cols: 3, onPick: id => { state.shape.dash = id; rerenderPopover(); } })),
-        section('Thickness', UI.slider({ min: 1, max: 20, value: state.shape.size, unit: '', onInput: v => { state.shape.size = v; } })),
-        section('Colour', UI.swatches({ colors: COLORS, value: state.shape.color, onPick: c => { state.shape.color = c; } })));
-    },
-
-    tools() {
-      const b = board();
-      const inst = h('div', { class: 'opt-grid', style: { '--cols': 5 } }, ...INSTRUMENTS.map(it =>
-        h('button', { class: 'opt' + (b.instruments.some(i => i.type === it.id) ? ' active' : ''), type: 'button', title: it.label, onclick: () => toggleInstrument(it.id) },
-          h('span', { html: ICONS[it.icon] }), h('span', { text: it.label }))));
-
-      const active = Geo.byId[state.geo.tool];
-      const geoBlocks = Geo.GROUPS.map(gr => h('div', {},
-        h('div', { class: 'geo-group', text: gr }),
-        UI.grid({ items: Geo.TOOLS.filter(t => t.group === gr), value: state.geo.tool, cols: 4, labels: true, onPick: id => setGeoTool(id) })));
-
-      return h('div', {},
-                section('Instruments', inst, h('div', { class: 'pop-note', style: { marginTop: '8px' }, text: 'Drag the round handles to move, rotate or remove an instrument. Swing the compass hinge to draw an arc.' })),
-        section('Geometry', ...geoBlocks),
-        active ? h('div', { class: 'hint-line', text: active.name + ' — ' + active.hint }) : h('div', { class: 'hint-line', text: 'Pick a geometry tool, then click on the board.' }));
+      const tabs = [['shapes', 'Shapes'], ['tools', 'Tools'], ['instruments', 'Instruments']];
+      const bar = h('div', { class: 'geo-tabs' }, ...tabs.map(([id, label]) => h('button', {
+        class: 'geo-tab' + (state.geo.tab === id ? ' active' : ''), type: 'button', text: label,
+        onclick: () => {
+          state.geo.tab = id;
+          if (id === 'shapes' && state.tool === 'tools') setTool('shapes');
+          if (id === 'tools' && state.geo.tool) setTool('tools');
+          rerenderPopover();
+        }
+      })));
+      return h('div', {}, bar, geoTabBody());
     },
 
     text() {
@@ -1194,7 +1236,7 @@
   function fillPopover() {
     popScroll.replaceChildren(panels[pop.kind]());
     popover.classList.toggle('narrow', NARROW.includes(pop.kind));
-    popover.classList.toggle('wide', pop.kind === 'tools');
+    popover.classList.toggle('wide', pop.kind === 'shapes');
     popover.classList.toggle('pop-text', pop.kind === 'text');
   }
   function openPopover(kind, anchor) {
@@ -1253,7 +1295,8 @@
       if (tool !== 'select') clearSel();
     }
     state.tool = tool;
-    toolBar.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+    // the geometry constructions ('tools') belong to the Geometry button
+    toolBar.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === (tool === 'tools' ? 'shapes' : tool)));
     const gt = Geo.byId[state.geo.tool];
     if (tool === 'tools' && gt) showHint(gt.name + ': ' + gt.hint); else hideHint();
     setCursor(); requestRender();
@@ -1333,6 +1376,9 @@
     // keep the bubble outline and tail in step with the content (colour picker opening, custom swatch appearing …)
     if (window.ResizeObserver) new ResizeObserver(() => { if (pop.kind) positionPopover(); }).observe(popScroll);
 
+    $('#popover .pop-x').addEventListener('click', closePopover);
+    popBody.querySelector('.pop-x').innerHTML = ICONS.close;
+
     // clicks outside the dialog close it
     document.addEventListener('pointerdown', e => {
       if (pop.kind && !popover.contains(e.target) && !toolBar.contains(e.target)) closePopover();
@@ -1343,7 +1389,9 @@
       const btn = e.target.closest('[data-tool]'); if (!btn) return;
       const t = btn.dataset.tool;
       if (t === 'clear') { confirmClear(); return; }
-      if (state.tool !== t) { closePopover(); setTool(t); return; }   // first click: just select the tool
+      const current = state.tool === 'tools' ? 'shapes' : state.tool;
+      if (t === 'backdrop' && current !== 'backdrop') { setTool('backdrop'); openPopover('backdrop', btn); return; }   // Backdrop: dialog opens on the first click
+      if (current !== t) { closePopover(); setTool(t); return; }      // other tools: first click just selects the tool
       if (t === 'move') return;                                       // Move has no dialog
       togglePopover(t, btn);                                          // clicking the active tool again: dialog
     });
