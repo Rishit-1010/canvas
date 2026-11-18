@@ -1283,7 +1283,7 @@
 
   /* The dialog is a speech bubble: .pop-body (white, inner shadow, scrolls) plus a small tail (.pop-tail)
      pointing at the tool button that opened it. Pen / Eraser / Select use the narrow 200px bubble from the design. */
-  const DIALOG_H = 150;                       // height of the scrolling area of every dialog, in px
+  const DIALOG_H = { pen: 150, select: 250, eraser: 250, shapes: 300, text: 300 };   // height of each dialog's scrolling area, in px
   const NARROW = ['pen', 'eraser', 'select'];
   function fillPopover() {
     popScroll.replaceChildren(panels[pop.kind]());
@@ -1328,7 +1328,7 @@
   function positionPopover() {
     if (!pop.anchor) return;
     const a = pop.anchor.getBoundingClientRect();
-    popScroll.style.height = Math.max(100, Math.min(DIALOG_H, a.top - 3 - 17 - 40 - 12)) + 'px';   // every dialog has the same height (content scrolls); shrinks only if the screen is too short
+    popScroll.style.height = Math.max(100, Math.min(DIALOG_H[pop.kind] || 150, a.top - 3 - 17 - 40 - 12)) + 'px';   // every dialog has the same height (content scrolls); shrinks only if the screen is too short
     popover.style.bottom = (H - a.top + 3) + 'px';
     const w = popover.offsetWidth;
     const left = UI.clamp(a.left + a.width / 2 - w / 2, 10, Math.max(10, W - w - 10));
