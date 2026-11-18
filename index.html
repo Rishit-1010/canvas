@@ -18,6 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anta&family=Anton&family=Bebas+Neue&family=Caveat&family=Dancing+Script&family=Figtree:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lato&family=Lobster&family=Manufacturing+Consent&family=Merriweather&family=Montserrat&family=Oswald&family=Pacifico&family=Parkinsans&family=Playfair+Display&family=Poppins&family=Quicksand:wght@400;500;600;700&family=Raleway&family=Roboto&family=Roboto+Mono&family=Space+Grotesk&display=swap" rel="stylesheet">
 
+  <link rel="preload" href="image 92.png" as="image">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -138,30 +139,12 @@
   <!-- generic confirmation dialog (used by Clear, Delete board …) -->
   <div id="modal"></div>
 
-  <!-- Scripts are loaded one after another (order matters).
-       Each file is looked up in js/ first, then next to index.html, so the site works
-       whether or not you kept the js/ folder. If a file is missing, a message says which. -->
-  <script>
-    (function () {
-      var files = ['icons-design', 'icons', 'ui', 'geometry', 'whiteboard', 'app'], i = 0;
-      function load(src, ok, fail) {
-        var s = document.createElement('script');
-        s.src = src; s.onload = ok; s.onerror = fail;
-        document.body.appendChild(s);
-      }
-      function missing(name) {
-        var d = document.createElement('div');
-        d.style.cssText = 'position:fixed;top:70px;left:16px;right:16px;z-index:999;background:#fff;border:2px solid #000455;padding:12px;border-radius:12px;font:14px sans-serif;color:#000455';
-        d.textContent = 'Could not load ' + name + '.js. Upload all the .js files next to index.html, or inside a folder named js.';
-        document.body.appendChild(d);
-      }
-      function next() {
-        if (i === files.length) return;
-        var n = files[i++];
-        load('js/' + n + '.js', next, function () { load(n + '.js', next, function () { missing(n); }); });
-      }
-      next();
-    })();
-  </script>
+  <!-- Scripts download in parallel and run in this order (order matters). All files sit next to index.html. -->
+  <script defer src="icons-design.js"></script>
+  <script defer src="icons.js"></script>
+  <script defer src="ui.js"></script>
+  <script defer src="geometry.js"></script>
+  <script defer src="whiteboard.js"></script>
+  <script defer src="app.js"></script>
 </body>
 </html>

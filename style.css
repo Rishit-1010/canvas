@@ -106,11 +106,11 @@ canvas { position: absolute; left: 0; top: 0; }
 .slider-val { min-width: 46px; text-align: right; font: 400 13px var(--font-digits); }
 .popover:not(.pop-text) .slider-val { display: none; }          /* only the Text dialog shows a number */
 input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 17px; margin: 0; outline: none; cursor: pointer; background: none; }
-/* track: 6px high rounded rectangle, navy up to the thumb (--p is set by ui.js), lavender after it */
-input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(var(--navy), var(--navy)) 0 0 / var(--p, 50%) 100% no-repeat, var(--lav); }
-input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(var(--navy), var(--navy)) 0 0 / var(--p, 50%) 100% no-repeat, var(--lav); }
+/* track (from the design): 5px high rounded bar, navy up to the thumb (--p is set by ui.js), #D3D5FF after it */
+input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 2.5px; background: linear-gradient(var(--navy), var(--navy)) 0 0 / var(--p, 50%) 100% no-repeat, #D3D5FF; }
+input[type=range]::-moz-range-track { height: 5px; border-radius: 2.5px; background: linear-gradient(var(--navy), var(--navy)) 0 0 / var(--p, 50%) 100% no-repeat, #D3D5FF; }
 /* thumb: 17px white circle with a 3px navy stroke */
-input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; margin-top: -5.5px; box-sizing: border-box; width: 17px; height: 17px; border-radius: 50%; background: #fff; border: 3px solid var(--navy); box-shadow: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; margin-top: -6px; box-sizing: border-box; width: 17px; height: 17px; border-radius: 50%; background: #fff; border: 3px solid var(--navy); box-shadow: none; }
 input[type=range]::-moz-range-thumb { box-sizing: border-box; width: 17px; height: 17px; border-radius: 50%; background: #fff; border: 3px solid var(--navy); box-shadow: none; }
 
 /* colour swatches: 20px circles, 10px apart, five per row; the chosen one shows a white tick */
