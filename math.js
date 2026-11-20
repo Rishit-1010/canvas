@@ -126,6 +126,7 @@
      --------------------------------------------------------- */
   function latexToText(src) {
     let s = String(src || '');
+    s = s.replace(/\\(?:mathrm|mathit|text)\s*\{([^{}]*)\}/g, '$1').replace(/\\exponentialE/g, 'e');   // \mathrm{abs} -> abs, MathLive's e -> e
     // spacing commands and delimiters
     s = s.replace(/\\(?:,|;|:|!|quad|qquad| \s*)/g, ' ').replace(/\\left|\\right|\\displaystyle|\\mathrm|\\mathit|\\text/g, m => (m === '\\text' || m === '\\mathrm' || m === '\\mathit' ? '' : ''));
     s = s.replace(/\\placeholder\{[^{}]*\}/g, '').replace(/\\operatorname\{([^{}]*)\}/g, '$1');
