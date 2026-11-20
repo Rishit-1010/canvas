@@ -12,6 +12,9 @@
   // 2. start the whiteboard
   window.Whiteboard.init();
 
+  // start downloading the equation editor now, so the Graph Calculator opens instantly later
+  window.Graph.preload();
+
   // 3. main sidebar open / close
   const openSidebar = () => document.body.classList.add('sb-open');
   const closeSidebar = () => document.body.classList.remove('sb-open');
@@ -26,6 +29,7 @@
     $$('.workspace').forEach(w => w.classList.toggle('active', w.id === 'ws-' + name));
     $$('[data-workspace]').forEach(b => b.classList.toggle('active', b === btn));
     if (name === 'whiteboard') window.Whiteboard.resize();
+    if (name === 'graph') window.Graph.show();                 // the graph starts the first time it is opened
     closeSidebar();
   }));
 

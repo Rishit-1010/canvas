@@ -224,6 +224,12 @@
     return im;
   }
 
+  /* The Graph Calculator reuses drawObject for its geometry objects, but with its own zoom level:
+     renderObject(c, o, s) draws one object as if the view scale were s. */
+  let scaleOverride = 0;
+  const viewScale = () => scaleOverride || board().s;
+  function renderObject(c, o, s) { scaleOverride = s; try { drawObject(c, o); } finally { scaleOverride = 0; } }
+
   function drawObject(c, o) {
     c.save();
     c.globalCompositeOperation = o.erase ? 'destination-out' : 'source-over';
@@ -253,7 +259,7 @@
       }
       case 'dot': {
         // points and their labels keep the same size ON SCREEN at every zoom level, so they stay readable when zoomed out
-        const k = 1 / board().s;
+        const k = 1 / viewScale();
         c.beginPath(); c.arc(o.x, o.y, (Math.max(4, o.size) - .5) * k, 0, TAU);
         c.fill(); c.lineWidth = 1.5 * k; c.strokeStyle = '#fff'; c.stroke();
         if (o.label && !o.labelHidden) {
@@ -293,7 +299,7 @@
         break;
       }
       case 'label': {
-        const k = 1 / board().s;                                   // labels also keep their on-screen size
+        const k = 1 / viewScale();                                 // labels also keep their on-screen size
         ensureFont('Quicksand', o.fs);
         c.font = `700 ${o.fs * k}px Quicksand, sans-serif`; c.textBaseline = 'alphabetic';
         c.fillText(o.text, o.x, o.y);
@@ -1420,5 +1426,5 @@
     updateBoardUI();
   }
 
-  window.Whiteboard = { init, exportPNG, saveFile, openFile, resize };
+  window.Whiteboard = { init, exportPNG, saveFile, openFile, resize, renderObject, bboxOf };
 })();

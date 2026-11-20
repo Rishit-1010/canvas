@@ -19,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Anta&family=Anton&family=Bebas+Neue&family=Caveat&family=Dancing+Script&family=Figtree:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lato&family=Lobster&family=Manufacturing+Consent&family=Merriweather&family=Montserrat&family=Oswald&family=Pacifico&family=Parkinsans&family=Playfair+Display&family=Poppins&family=Quicksand:wght@400;500;600;700&family=Raleway&family=Roboto&family=Roboto+Mono&family=Space+Grotesk&display=swap" rel="stylesheet">
 
   <link rel="preload" href="image 92.png" as="image">
-  <link rel="stylesheet" href="style.css?v=20261118e">
+  <link rel="stylesheet" href="style.css?v=20261120a">
 </head>
 <body>
 
@@ -126,12 +126,43 @@
     </div>
   </main>
 
-  <!-- ===================== GRAPH WORKSPACE (phase 2) ===================== -->
+  <!-- ===================== GRAPH CALCULATOR WORKSPACE ===================== -->
   <main id="ws-graph" class="workspace">
-    <button class="float-btn" data-open-sidebar title="Menu" aria-label="Open menu"><span data-icon="panel" data-exact></span></button>
-    <div class="placeholder">
-      <h2>Graph Calculator</h2>
-      <p>Coming in phase 2.</p>
+    <!-- the graph itself (grid, curves, geometry) fills the screen; the rail and panel sit on top of it -->
+    <canvas id="gCanvas" aria-label="Graph"></canvas>
+    <div id="gTip" role="status"></div>
+
+    <!-- left rail: menu button + Algebra / Tools tabs (and, on phones, the view controls) -->
+    <aside id="gRail">
+      <button class="g-menu" data-open-sidebar title="Menu" aria-label="Open menu"><span data-icon="panel" data-exact></span></button>
+      <nav class="g-tabs">
+        <button class="g-tab active" data-gtab="algebra"><span class="g-ti"><span data-icon="calc"></span></span><span class="g-tl">Algebra</span></button>
+        <button class="g-tab" data-gtab="tools"><span class="g-ti"><span data-icon="geoTab"></span></span><span class="g-tl">Tools</span></button>
+      </nav>
+    </aside>
+
+    <!-- equation / tools panel -->
+    <section id="gPanel">
+      <header class="gp-head">
+        <button id="gAdd" class="gp-btn" title="Add item" aria-label="Add item"><span data-icon="plusG"></span></button>
+        <button id="gKey" class="gp-btn" title="Keypad" aria-label="Show or hide the keypad"><span data-icon="keyboard"></span></button>
+      </header>
+      <div id="gRows" class="gp-body"></div>
+      <div id="gTools" class="gp-body" hidden></div>
+    </section>
+    <!-- « closes the panel and turns into » to open it again -->
+    <button id="gCollapse" class="gp-btn" title="Hide the equation panel" aria-label="Hide the equation panel"><span data-icon="collapse"></span></button>
+    <div id="gShade"></div>
+
+    <!-- settings button (top right) and the view controls -->
+    <button id="gSettings" class="g-fab" title="Settings" aria-label="Settings"><span data-icon="gear"></span></button>
+    <div id="gControls">
+      <button class="g-fab" data-gact="undo" title="Undo" aria-label="Undo"><span data-icon="undoG"></span></button>
+      <button class="g-fab" data-gact="redo" title="Redo" aria-label="Redo"><span data-icon="redoG"></span></button>
+      <button class="g-fab" data-gact="home" title="Reset view" aria-label="Reset view"><span data-icon="home"></span></button>
+      <button class="g-fab" data-gact="zoomIn" title="Zoom in" aria-label="Zoom in"><span data-icon="zoomIn"></span></button>
+      <button class="g-fab" data-gact="zoomOut" title="Zoom out" aria-label="Zoom out"><span data-icon="zoomOut"></span></button>
+      <button class="g-fab" data-gact="fit" title="Full screen" aria-label="Full screen"><span data-icon="fit"></span></button>
     </div>
   </main>
 
@@ -140,10 +171,14 @@
 
   <!-- Scripts download in parallel and run in this order (order matters). All files sit next to index.html. -->
   <script defer src="icons-design.js?v=20261118e"></script>
-  <script defer src="icons.js?v=20261118e"></script>
+  <script defer src="icons-graph.js?v=20261120a"></script>
+  <script defer src="icons.js?v=20261120a"></script>
   <script defer src="ui.js?v=20261118e"></script>
-  <script defer src="geometry.js?v=20261118e"></script>
-  <script defer src="whiteboard.js?v=20261118e"></script>
-  <script defer src="app.js?v=20261118e"></script>
+  <script defer src="geometry.js?v=20261120a"></script>
+  <script defer src="whiteboard.js?v=20261120a"></script>
+  <script defer src="math.js?v=20261120a"></script>
+  <script defer src="keypad.js?v=20261120a"></script>
+  <script defer src="graph.js?v=20261120a"></script>
+  <script defer src="app.js?v=20261120a"></script>
 </body>
 </html>

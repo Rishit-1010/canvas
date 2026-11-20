@@ -148,9 +148,20 @@
     g_label: s('<path d="M6.5 19L12 5l5.5 14M8.6 14h6.8"/>' + dot(19.5, 5.5, 1.6)),
     g_copystyle: s('<path d="M5 4.5h10v5H5zM15 7h3.5v4.5h-8V15M10.5 15v5"/>'),
     g_zoomin: s('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5M7.5 10.5h6M10.5 7.5v6"/>'),
-    g_zoomout: s('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5M7.5 10.5h6"/>')
+    g_zoomout: s('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5M7.5 10.5h6"/>'),
+    /* ---------- graph calculator (hand-drawn) ---------- */
+    keyboard: s('<rect x="2.5" y="6" width="19" height="12" rx="2.2"/><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M6 14h.01M18 14h.01M9 14h6" stroke-width="2.2"/>'),
+    note: s('<path d="M5 4.5h14v15H5z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/>'),
+    table: s('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M12 4.5v15"/>'),
+    expr: s('<path d="M4 18c3 0 3-12 6-12M7 11h5M14 11l5 7M19 11l-5 7"/>', 1.8),
+    close: s('<path d="M6 6l12 12M18 6L6 18"/>', 2),
+    play: s('<path d="M8 5.5l11 6.5-11 6.5z" fill="currentColor"/>', 1.4),
+    pause: s('<path d="M8 5.5v13M16 5.5v13"/>', 2.6),
+    chevDown: s('<path d="M5 9l7 7 7-7"/>', 2),
+    backspace: s('<path d="M9 5.5h10.5a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5H9L2.8 12z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/>', 1.6),
+    enter: s('<path d="M19 5v7a2 2 0 0 1-2 2H5M9 9.5L4.5 14 9 18.5"/>', 1.9)
   };
 
   // the traced design icons (icons-design.js) win over the hand-drawn ones of the same name
-  window.ICONS = Object.assign({}, HAND, window.ICONS_D || {});
+  window.ICONS = Object.assign({}, HAND, window.ICONS_D || {}, window.ICONS_G || {});
 })();
