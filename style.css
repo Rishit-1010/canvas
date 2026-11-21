@@ -363,6 +363,11 @@ math-field.g-mf::part(virtual-keyboard-toggle), math-field.g-mf::part(menu-toggl
 .g-chip.on { background: var(--navy); color: #fff; }
 .g-table + .g-chip, .g-main > .g-chip { margin-top: 4px; }
 
+/* "add slider" button under a row */
+.g-addslider { align-self: flex-start; margin-top: 4px; height: 24px; padding: 0 10px; border: 0; border-radius: 12px; background: var(--lav); color: var(--navy); font: 700 11.5px var(--font-ui); transition: background .12s; }
+.g-addslider:hover { background: #D3D5FF; }
+.g-addslider[hidden] { display: none; }
+
 /* reordering, folders, geometry list */
 .g-row[hidden] { display: none; }
 .g-num { touch-action: none; cursor: grab; }

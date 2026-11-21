@@ -658,8 +658,15 @@
           if (pv && cond) return { type: 'param', ast, cond, v: pv, needs: undef(new Set([...free, ...condFree].filter(n => n !== pv))) };
           return { type: 'point', ast, cond, needs: undef(new Set([...free, ...condFree])) };
         }
-        if (free.has('x') || (free.has('y') && !free.has('x') && false)) return { type: 'explicit', ast, cond, needs: undef(new Set([...free, ...condFree].filter(n => n !== 'x'))) };
+        if (free.has('y') && !free.has('x')) return { type: 'incomplete' };            // a lone  y  does nothing (no slider, no error)
+        if (free.has('x')) return { type: 'explicit', ast, cond, needs: undef(new Set([...free, ...condFree].filter(n => n !== 'x'))) };
         return { type: 'value', ast, cond, needs: undef(free) };
+      }
+      // chained inequality such as  1 < y < 3  (shaded)
+      if (rels.length === 2 && rels.every(v => ['<', '>', '<=', '>='].includes(v))) {
+        const t3 = trees.map(strip), fv = new Set(); t3.forEach(t => freeVars(t, new Set(), fv));
+        if (!(fv.has('x') || fv.has('y'))) fail('This needs x or y');
+        return { type: 'ineqchain', cmp: { n: 'cmp', parts: [t3[0], rels[0], t3[1], rels[1], t3[2]] }, cond, needs: undef(new Set([...fv, ...condFree].filter(n => n !== 'x' && n !== 'y'))) };
       }
       if (rels.length > 1) fail('Only one =, <, > … per line (use { } for restrictions)');
       const rel = rels[0], L = strip(trees[0]), R = strip(trees[1]);

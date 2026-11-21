@@ -112,7 +112,7 @@
      --------------------------------------------------------- */
   const env = { V: {}, F: {} };                       // V: variable values by name, F: user functions by name
   let items = [];                                     // drawable things, in row order
-  const NAME = /^[A-Za-z](?:_[A-Za-z0-9]+)?$/;
+  const NAME = /^[A-Za-z]+(?:_[A-Za-z0-9]+)?$/;
   const FUNCDEF = /^\s*([A-Za-z](?:_[A-Za-z0-9]+)?)\s*\(\s*[A-Za-z]/;
   const VARDEF = /^\s*([A-Za-z](?:_[A-Za-z0-9]+)?)\s*=(?!=)(.*)$/;
 
@@ -181,20 +181,10 @@
     const sliderByName = {};
     st.rows.forEach(r => { if (r._r && r._r.slider) sliderByName[r._r.name] = r; });
 
-    // 3d. undefined single letters get a slider automatically (value 1, like Desmos)
-    if (depth === 0) {
-      const wanted = []; const seen = new Set();
-      st.rows.forEach((r, i) => {
-        if (r.type !== 'expr' || !r._st || !r._st.needs) return;
-        r._st.needs.forEach(n => { if (NAME.test(n) && !seen.has(n) && !(n in env.V) && !ctx.funcs.has(n)) { seen.add(n); wanted.push({ n, at: i }); } });
-      });
-      if (wanted.length) {
-        wanted.sort((a, b) => b.at - a.at).forEach(w => st.rows.splice(w.at, 0, newRow('expr', { src: w.n + '=1', mode: st.rows.some(r => r.mode === 'text') && !useMath ? 'text' : 'latex' })));
-        if (!useMath) st.rows.forEach(r => { if (r.src && /^[A-Za-z](_\w+)?=1$/.test(r.src)) r.mode = 'text'; });
-        buildPanel();
-        return recompute(1);
-      }
-    }
+    // 3d. letters that are used but not defined: the row offers an "add slider" button (like Desmos) — nothing is added by itself
+    st.rows.forEach(r => {
+      r._needs = (r.type === 'expr' && r._st && r._st.needs) ? r._st.needs.filter(n => NAME.test(n) && !(n in env.V) && !ctx.funcs.has(n)) : [];
+    });
 
     // 3e. everything else becomes something to draw
     st.rows.forEach((r, idx) => {
@@ -203,14 +193,11 @@
       if (r.type !== 'expr') return;
       const s = r._st;
       if (r._r && r._r.error) return;
-      if (s.type === 'empty') { r._r = { graph: false }; return; }
+      if (s.type === 'empty' || s.type === 'incomplete') { r._r = { graph: false }; return; }
       if (s.type === 'error') { r._r = { error: s.msg }; return; }
       if (s.type === 'funcdef') { if (r._r && r._r.graph) items.push({ row: r, kind: 'explicit', fn: r._r.fn, cond: null }); return; }
       if (s.type === 'vardef') return;
       try {
-        // names that are neither defined nor allowed here (e.g. "theta" in a plain equation) are reported
-        const bad = (s.needs || []).filter(n => !(n in env.V) && !NAME.test(n));
-        if (bad.length) throw new Error(bad[0] + ' is not defined');
         let it = null;
         switch (s.type) {
           case 'explicit': it = { kind: 'explicit', fn: ME.compile(s.ast, ['x'], env), cond: ME.compileConds(s.cond, ['x', 'y'], env) }; break;
@@ -222,6 +209,7 @@
             break;
           }
           case 'implicit': it = { kind: 'implicit', fn: ME.compile(s.ast, ['x', 'y'], env), cond: ME.compileConds(s.cond, ['x', 'y'], env) }; break;
+          case 'ineqchain': it = { kind: 'ineq', chain: ME.compileConds([s.cmp], ['x', 'y'], env), rel: '<=' }; break;
           case 'ineq': {
             it = { kind: 'ineq', L: ME.compile(s.L, ['x', 'y'], env), R: ME.compile(s.R, ['x', 'y'], env), rel: s.rel, cond: ME.compileConds(s.cond, ['x', 'y'], env) };
             if (s.bd) it.bd = { kind: s.bd.kind, fn: ME.compile(s.bd.ast, [s.bd.kind === 'y' ? 'x' : 'y'], env) };
@@ -245,7 +233,7 @@
           case 'value': {
             const fn = ME.compile(s.ast, [], env);
             const v = fn();
-            r._r = { graph: false, out: s.boolean ? ME.format(!!v) : '= ' + ME.format(v) };
+            r._r = { graph: false, out: r._needs.length ? '' : (s.boolean ? ME.format(!!v) : '= ' + ME.format(v)) };
             return;
           }
         }
@@ -546,8 +534,8 @@
       const y = gy((j + .5) * cell);
       for (let i = 0; i < nx; i++) {
         const x = gx((i + .5) * cell);
-        const l = it.L(x, y), r = it.R(x, y);
-        let on = rel === '<' ? l < r : rel === '>' ? l > r : rel === '<=' ? l <= r : l >= r;
+        const l = it.chain ? 0 : it.L(x, y), r = it.chain ? 0 : it.R(x, y);
+        let on = it.chain ? it.chain(x, y) : rel === '<' ? l < r : rel === '>' ? l > r : rel === '<=' ? l <= r : l >= r;
         if (on && it.cond && !it.cond(x, y)) on = false;
         if (on) { const k = (j * nx + i) * 4; d[k] = rgb[0]; d[k + 1] = rgb[1]; d[k + 2] = rgb[2]; d[k + 3] = 77; }
       }
@@ -556,6 +544,7 @@
     c.save(); c.imageSmoothingEnabled = false; c.drawImage(shade, 0, 0, nx * cell, ny * cell); c.restore();
   }
   function drawIneqBoundary(c, it, fast) {
+    if (it.chain) return;                                   // chained inequalities (1 < y < 3) are only shaded
     c.setLineDash(it.rel === '<' || it.rel === '>' ? [10, 8] : (it.row.style === 'dotted' ? [1.5, 6] : []));     // dashed boundary when the value itself is not included
     if (it.bd) it.bd.kind === 'y' ? plotExplicit(c, it.bd.fn, null) : plotX(c, it.bd.fn, null);
     else marching(c, it.F, it.cond, fast ? 6 : 3);
@@ -699,6 +688,10 @@
         const out = el.querySelector('.g-out'); out.textContent = info.out || ''; out.hidden = !info.out;
         const err = el.querySelector('.g-err');
         err.textContent = info.error || ''; err.hidden = !(info.error && r._showErr);
+        const ab = el.querySelector('.g-addslider');
+        const need = r._needs || [];
+        ab.hidden = !(need.length && r._showErr);
+        ab.textContent = 'add slider' + (need.length > 1 ? 's' : '') + ': ' + need.join(', ');
         // slider for variables like  a = 1
         let sl = el.querySelector('.g-slider');
         if (info.slider && isFinite(info.value)) { if (!sl) sl = addSlider(el, r); updateSlider(sl, r, info.value); }
@@ -728,7 +721,8 @@
     else if (r.type === 'table') buildTableRow(r, main);
     else if (r.type === 'folder') buildFolder(r, main, dot);
 
-    main.append(h('div', { class: 'g-out', hidden: true }), h('div', { class: 'g-err', hidden: true }));
+    const addBtn = h('button', { class: 'g-addslider', type: 'button', hidden: true, onclick: () => addSliders(r) });
+    main.append(h('div', { class: 'g-out', hidden: true }), h('div', { class: 'g-err', hidden: true }), addBtn);
     el.addEventListener('pointerdown', e => { if (e.target === el || e.target === main) { e.preventDefault(); focusRow(r); } });
     return el;
   }
@@ -836,6 +830,13 @@
     refreshRowStatus(); redraw(); save();
   }
   function scheduleHistory() { clearTimeout(histTimer); histTimer = setTimeout(pushHistory, 700); }
+
+  // "add slider: a" — creates a row  a = 1  above this one
+  function addSliders(r) {
+    const i = st.rows.indexOf(r);
+    (r._needs || []).slice().reverse().forEach(n => st.rows.splice(i, 0, newRow('expr', { src: n + '=1', mode: useMath ? 'latex' : 'text' })));
+    recompute(); buildPanel(); redraw(); save(); pushHistory();
+  }
 
   function deleteRow(r, focusPrev) {
     pushHistory();
@@ -1515,6 +1516,7 @@
     setTab('algebra');
     resizeCanvas();
     if (!loaded) st.view = homeView();
+    st.rows.forEach(r => { r._showErr = true; });
     recompute();
     buildPanel();
     lastSnap = snapshot(); updateHistoryButtons();
@@ -1524,5 +1526,5 @@
   }
   function show() { init().then(() => { onResize(); redraw(); }); }
 
-  window.Graph = { init, show, preload: () => { loadMathLive(); }, resize: () => { onResize(); } };
+  window.Graph = { debug: () => ({ kinds: items.map(i => i.kind), rows: st.rows.map(r => ({ src: r.src, type: r._st && r._st.type, err: r._r && r._r.error, needs: r._needs, out: r._r && r._r.out })) }), init, show, preload: () => { loadMathLive(); }, resize: () => { onResize(); } };
 })();
