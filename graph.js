@@ -687,7 +687,7 @@
         el.classList.toggle('empty', !r.src.trim());
         const out = el.querySelector('.g-out'); out.textContent = info.out || ''; out.hidden = !info.out;
         const err = el.querySelector('.g-err');
-        err.textContent = info.error || ''; err.hidden = !(info.error && r._showErr);
+        err.textContent = info.error || ''; err.hidden = !(info.error && r._showErr && !/incomplete/i.test(info.error));   // half-typed input stays quiet, like Desmos
         const ab = el.querySelector('.g-addslider');
         const need = r._needs || [];
         ab.hidden = !(need.length && r._showErr);
