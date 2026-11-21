@@ -65,7 +65,30 @@
     abs: Math.abs, floor: Math.floor, ceil: Math.ceil, sign: Math.sign,
     round: (x, n = 0) => { const k = Math.pow(10, n); return Math.round(x * k) / k; },
     mod: (a, b) => a - b * Math.floor(a / b),
-    min: Math.min, max: Math.max,
+    min: (...a) => Math.min(...a.flat()), max: (...a) => Math.max(...a.flat()),
+    // ---- lists:  [1,2,3]  [1...10]  L[2]  total(L) …  (operations on lists work element by element)
+    add: (a, b) => a + b, sub: (a, b) => a - b, mul: (a, b) => a * b, div: (a, b) => a / b, neg: a => -a,
+    degf: x => (E.deg ? x : x * D2R),
+    map1: (f, a) => (Array.isArray(a) ? a.map(v => f(v)) : f(a)),
+    mapN(f, args) {                                  // call f for each position; plain numbers are repeated
+      if (!args.some(Array.isArray)) return f(...args);
+      const n = Math.min(...args.filter(Array.isArray).map(a => a.length));
+      return Array.from({ length: n }, (_, i) => f(...args.map(a => (Array.isArray(a) ? a[i] : a))));
+    },
+    map2: (f, a, b) => E.mapN(f, [a, b]),
+    range(a, b, c) {                                  // [a...c]  or  [a, b...c]
+      const step = c === undefined ? 1 : b - a, end = c === undefined ? b : c, out = [];
+      if (!step || !isFinite(step) || !isFinite(a) || !isFinite(end)) return out;
+      for (let v = a, i = 0; (step > 0 ? v <= end + 1e-9 : v >= end - 1e-9) && i < 10000; v += step, i++) out.push(v);
+      return out;
+    },
+    idx: (L, i) => E.map1(k => (Array.isArray(L) ? (L[Math.round(k) - 1] === undefined ? NaN : L[Math.round(k) - 1]) : NaN), i),
+    total: L => (Array.isArray(L) ? L.reduce((a, b) => a + b, 0) : L),
+    mean: L => (Array.isArray(L) ? (L.length ? E.total(L) / L.length : NaN) : L),
+    median(L) { if (!Array.isArray(L)) return L; if (!L.length) return NaN; const s = [...L].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; },
+    length: L => (Array.isArray(L) ? L.length : 1),
+    sort: L => (Array.isArray(L) ? [...L].sort((a, b) => a - b) : L),
+    stdev(L) { if (!Array.isArray(L) || !L.length) return NaN; const m = E.mean(L); return Math.sqrt(E.total(L.map(v => (v - m) * (v - m))) / L.length); },
     gcd: (a, b) => { a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b)); while (b) [a, b] = [b, a % b]; return a; },
     lcm: (a, b) => (a && b ? Math.abs(Math.round(a) * Math.round(b)) / E.gcd(a, b) : 0),
     // factorial, combinations, permutations
@@ -113,8 +136,11 @@
     ln: 'ln', log: 'log', exp: 'exp', sqrt: 'sqrt', abs: 'abs', floor: 'floor', ceil: 'ceil', round: 'round',
     sign: 'sign', sgn: 'sign', min: 'min', max: 'max', mod: 'mod', gcd: 'gcd', lcm: 'lcm', nCr: 'nCr', nPr: 'nPr',
     nroot: 'nroot', logb: 'logb', atan2: 'atan2',
-    sum: 'sum', prod: 'prod', int: 'int', ddx: 'ddx'
+    sum: 'sum', prod: 'prod', int: 'int', ddx: 'ddx',
+    total: 'total', mean: 'mean', median: 'median', length: 'length', sort: 'sort', stdev: 'stdev'
   };
+  // functions that take a whole list (they are not applied element by element)
+  const LISTFN = new Set(['total', 'mean', 'median', 'length', 'sort', 'stdev', 'min', 'max', 'sum', 'prod', 'int', 'ddx']);
   const GREEK = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'rho', 'sigma', 'tau', 'phi', 'chi', 'psi', 'omega', 'pi',
     'Gamma', 'Delta', 'Theta', 'Lambda', 'Xi', 'Pi', 'Sigma', 'Phi', 'Psi', 'Omega'];
   const CONSTS = { e: Math.E, pi: Math.PI, tau: 2 * Math.PI };
@@ -132,6 +158,7 @@
     s = s.replace(/\\placeholder\{[^{}]*\}/g, '').replace(/\\operatorname\{([^{}]*)\}/g, '$1');
     s = s.replace(/\\lbrace|\\\{/g, '{').replace(/\\rbrace|\\\}/g, '}').replace(/\\lbrack/g, '[').replace(/\\rbrack/g, ']');
     s = s.replace(/\\lfloor/g, 'floor(').replace(/\\rfloor/g, ')').replace(/\\lceil/g, 'ceil(').replace(/\\rceil/g, ')');
+    s = s.replace(/\\(?:ldots|dots|cdots)/g, '...');
     s = s.replace(/\^\{\\circ\}|\\degree|\\circ/g, '°');
     s = s.replace(/\\cdot|\\times|\\ast/g, '*').replace(/\\div/g, '/').replace(/\\le(?:q|qslant)?(?![a-z])/g, '<=').replace(/\\ge(?:q|qslant)?(?![a-z])/g, '>=').replace(/\\ne(?:q)?(?![a-z])/g, '!=');
     s = s.replace(/\\mid|\\vert/g, '|').replace(/\\infty/g, '1e308');
@@ -220,7 +247,7 @@
       const c = text[i];
       if (/\s/.test(c)) { i++; continue; }
       let m;
-      if ((m = /^(\d+\.?\d*|\.\d+)/.exec(text.slice(i)))) { toks.push({ t: 'num', v: parseFloat(m[1]) }); i += m[1].length; continue; }
+      if ((m = /^(\d+(?:\.(?!\.)\d*)?|\.(?!\.)\d+)/.exec(text.slice(i)))) { toks.push({ t: 'num', v: parseFloat(m[1]) }); i += m[1].length; continue; }
       if ((m = /^[A-Za-z]+(?:_[A-Za-z0-9]+)?/.exec(text.slice(i)))) {
         const run = m[0]; i += run.length;
         if (/^log_/.test(run)) { toks.push({ t: 'fn', v: 'logb', base: run.slice(4) }); continue; }
@@ -239,6 +266,7 @@
         });
         continue;
       }
+      if (text.startsWith('...', i)) { toks.push({ t: 'op', v: '...' }); i += 3; continue; }
       const two = text.slice(i, i + 2);
       if (two === '<=' || two === '>=' || two === '!=' || two === '==') { toks.push({ t: 'op', v: two === '==' ? '=' : two }); i += 2; continue; }
       if ('+-*/^()[]{},=<>!|:\'°'.includes(c)) { toks.push({ t: 'op', v: c }); i++; continue; }
@@ -266,7 +294,7 @@
     function startsPrimary(tk) {
       if (!tk) return false;
       if (tk.t === 'num' || tk.t === 'id' || tk.t === 'fn' || tk.t === 'ufn') return true;
-      return tk.t === 'op' && (tk.v === '(' || tk.v === '{' || (tk.v === '|' && absDepth === 0));
+      return tk.t === 'op' && (tk.v === '(' || tk.v === '{' || tk.v === '[' || (tk.v === '|' && absDepth === 0));
     }
     function parseTerm() {
       let a = parseUnary();
@@ -290,7 +318,8 @@
     function parsePostfix() {
       let a = parsePrimary();
       for (;;) {
-        if (isOp('!')) { p++; a = { n: 'fact', a }; }
+        if (isOp('[') && ['var', 'ucall', 'list', 'range', 'index', 'group'].includes(a.n)) { p++; const i = parseAdd(); expect(']'); a = { n: 'index', a, i }; }
+        else if (isOp('!')) { p++; a = { n: 'fact', a }; }
         else if (isOp('°')) { p++; a = { n: 'deg', a }; }
         else break;
       }
@@ -350,6 +379,21 @@
         }
         if (tk.v === '|') { p++; absDepth++; const a = parseAdd(); absDepth--; expect('|'); return { n: 'call', name: 'abs', args: [a] }; }
         if (tk.v === '{') return parsePiecewise();
+        if (tk.v === '[') {                                           // [1,2,3]   [1...10]   [1,3...11]
+          p++;
+          const items = [];
+          if (!isOp(']')) {
+            items.push(parseAdd());
+            while (isOp(',')) { p++; items.push(parseAdd()); }
+          }
+          if (isOp('...')) {
+            p++; const last = parseAdd(); expect(']');
+            if (items.length < 1 || items.length > 2) fail('Use [first...last] or [first, second...last]');
+            return { n: 'range', first: items[0], second: items[1] || null, last };
+          }
+          expect(']');
+          return { n: 'list', items };
+        }
       }
       fail('Unexpected "' + (tk.v !== undefined ? tk.v : '?') + '"');
     }
@@ -429,7 +473,9 @@
         break;
       }
       case 'ucall': node.args.forEach(a => freeVars(a, bound, out)); break;
-      case 'tuple': node.items.forEach(a => freeVars(a, bound, out)); break;
+      case 'tuple': case 'list': node.items.forEach(a => freeVars(a, bound, out)); break;
+      case 'range': freeVars(node.first, bound, out); freeVars(node.second, bound, out); freeVars(node.last, bound, out); break;
+      case 'index': freeVars(node.a, bound, out); freeVars(node.i, bound, out); break;
       case 'cmp': node.parts.forEach(a => { if (typeof a !== 'string') freeVars(a, bound, out); }); break;
       case 'piece': node.cases.forEach(c => { freeVars(c.cond, bound, out); freeVars(c.val, bound, out); }); freeVars(node.def, bound, out); break;
     }
@@ -443,6 +489,23 @@
      Generated functions get three helpers:  E (numeric library),  V (variable values by name),  F (user functions by name)
      --------------------------------------------------------- */
   const id = name => '$' + name.replace(/\W/g, '_');
+  let LM = false;                                  // "list mode": operators work element by element when lists are involved
+  // does this tree involve a list? (lists are written [..], or are variables / functions that hold lists)
+  function containsList(node, listVars) {
+    if (!node) return false;
+    const any = arr => arr.some(x => containsList(x, listVars));
+    switch (node.n) {
+      case 'list': case 'range': case 'index': return true;
+      case 'var': return !!(listVars && listVars.has(node.name));
+      case 'bin': return any([node.a, node.b]);
+      case 'neg': case 'fact': case 'deg': case 'group': return containsList(node.a, listVars);
+      case 'call': return any(node.args);
+      case 'ucall': return !!(listVars && listVars.has('f:' + node.name)) || any(node.args);
+      case 'tuple': return any(node.items);
+      case 'piece': return node.cases.some(c => containsList(c.val, listVars)) || containsList(node.def, listVars);
+    }
+    return false;
+  }
   function gen(node, bound) {
     switch (node.n) {
       case 'num': return String(node.v);
@@ -451,14 +514,19 @@
         if (node.name in CONSTS) return String(CONSTS[node.name]);
         return `V[${JSON.stringify(node.name)}]`;
       case 'group': return '(' + gen(node.a, bound) + ')';
-      case 'neg': return '(-' + gen(node.a, bound) + ')';
-      case 'fact': return `E.fact(${gen(node.a, bound)})`;
-      case 'deg': return `(E.deg?${gen(node.a, bound)}:${gen(node.a, bound)}*${D2R})`;
+      case 'list': return '[' + node.items.map(x => gen(x, bound)).join(',') + ']';
+      case 'range': return `E.range(${gen(node.first, bound)},${node.second ? gen(node.second, bound) + ',' : 'undefined,'}${gen(node.last, bound)})`.replace('undefined,', '').replace(/^E\.range\(([^,]*),([^,]*)\)$/, 'E.range($1,$2)');
+      case 'index': return `E.idx(${gen(node.a, bound)},${gen(node.i, bound)})`;
+      case 'neg': return LM ? `E.map1(E.neg,${gen(node.a, bound)})` : '(-' + gen(node.a, bound) + ')';
+      case 'fact': return LM ? `E.map1(E.fact,${gen(node.a, bound)})` : `E.fact(${gen(node.a, bound)})`;
+      case 'deg': return LM ? `E.map1(E.degf,${gen(node.a, bound)})` : `(E.deg?${gen(node.a, bound)}:${gen(node.a, bound)}*${D2R})`;
       case 'bin':
+        if (LM) { const f = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '^': 'pow' }[node.op]; return `E.map2(E.${f},${gen(node.a, bound)},${gen(node.b, bound)})`; }
         if (node.op === '^') return `E.pow(${gen(node.a, bound)},${gen(node.b, bound)})`;
         return `(${gen(node.a, bound)}${node.op}${gen(node.b, bound)})`;
       case 'call': {
         const a = node.args;
+        if (node.name === 'sum' && a.length === 1) return `E.total(${gen(a[0], bound)})`;
         if (node.name === 'sum' || node.name === 'prod') {
           if (a.length !== 4 || a[0].n !== 'var') fail(node.name + '(variable, from, to, expression)');
           const b2 = new Set(bound); b2.add(a[0].name);
@@ -474,10 +542,12 @@
           const b2 = new Set(bound); b2.add(a[1].name);
           return `E.ddx(function(${id(a[1].name)}){return ${gen(a[0], b2)}},${gen(a[1], bound)})`;
         }
+        if (LM && !LISTFN.has(node.name)) return `E.mapN(E.${node.name},[${a.map(x => gen(x, bound)).join(',')}])`;
         return `E.${node.name}(${a.map(x => gen(x, bound)).join(',')})`;
       }
       case 'ucall':
         if (node.primes) return `E.deriv(F[${JSON.stringify(node.name)}],${gen(node.args[0], bound)},${node.primes})`;
+        if (LM) return `E.mapN(F[${JSON.stringify(node.name)}],[${node.args.map(x => gen(x, bound)).join(',')}])`;
         return `F[${JSON.stringify(node.name)}](${node.args.map(x => gen(x, bound)).join(',')})`;
       case 'cmp': {
         const p = node.parts, tests = [];
@@ -500,13 +570,15 @@
   /* builds a JS function of the named parameters.  env = { V, F }  */
   function compile(node, params, env) {
     const bound = new Set(params);
-    const code = gen(node, bound);
+    LM = containsList(node, env.listVars);
+    let code; try { code = gen(node, bound); } finally { LM = false; }
     return new Function('E', 'V', 'F', `"use strict";return function(${params.map(id).join(',')}){return ${code};}`)(E, env.V, env.F);
   }
   // the same, for a list of conditions: the function returns true when all of them hold
   function compileConds(conds, params, env) {
     if (!conds || !conds.length) return null;
     const bound = new Set(params);
+    LM = false;
     const code = conds.map(c => gen(c, bound)).join('&&');
     return new Function('E', 'V', 'F', `"use strict";return function(${params.map(id).join(',')}){return ${code};}`)(E, env.V, env.F);
   }
@@ -633,6 +705,7 @@
      --------------------------------------------------------- */
   // nice number text:  0.30000000000004 -> 0.3 ; very large/small numbers use ×10^
   function format(v, digits = 10) {
+    if (Array.isArray(v)) return '[' + v.slice(0, 12).map(x => format(x, 6)).join(', ') + (v.length > 12 ? ', … (' + v.length + ')' : '') + ']';
     if (typeof v === 'boolean') return v ? 'true' : 'false';
     if (!isFinite(v)) return v === Infinity ? '∞' : v === -Infinity ? '−∞' : 'undefined';
     if (v === 0) return '0';
@@ -661,5 +734,5 @@
     return { lo, hi };
   }
 
-  window.MathEngine = { E, latexToText, parseStatement, compile, compileConds, freeVars, boundsFor, format, CONSTS, FUNCS };
+  window.MathEngine = { containsList, E, latexToText, parseStatement, compile, compileConds, freeVars, boundsFor, format, CONSTS, FUNCS };
 })();

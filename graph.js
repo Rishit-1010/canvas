@@ -137,7 +137,15 @@
     // table columns can also be used as names — skipped on purpose (keep it simple)
 
     // 3b. parse everything
+    assignFolders();
     st.rows.forEach(r => { r._r = null; if (r.type === 'expr') r._st = ME.parseStatement(r._text, ctx); });
+    // which variables / functions hold lists?  (then their formulas work element by element)
+    env.listVars = env.listVars || new Set(); env.listVars.clear();
+    for (let pass = 0; pass < 4; pass++) st.rows.forEach(r => {
+      const q = r._st; if (!q) return;
+      if (q.type === 'vardef' && ME.containsList(q.ast, env.listVars)) env.listVars.add(q.name);
+      if (q.type === 'funcdef' && ME.containsList(q.ast, env.listVars)) env.listVars.add('f:' + q.name);
+    });
 
     // 3c. functions first (their bodies only look names up when they run), then variables
     const defs = [];
@@ -163,7 +171,15 @@
     });
     // evaluate the variables a few times, so that a = b + 1 works whichever row comes first
     for (let pass = 0; pass < Math.min(6, defs.length + 1); pass++) defs.forEach(d => { try { env.V[d.name] = d.fn(); } catch (e) { env.V[d.name] = NaN; } });
-    defs.forEach(d => { if (d.r._r && d.r._r.slider) d.r._r.value = env.V[d.name]; });
+    defs.forEach(d => {
+      const info = d.r._r; if (!info) return;
+      info.value = env.V[d.name];
+      if (info.slider && typeof info.value !== 'number') info.slider = false;      // only plain numbers get a slider
+      if (Array.isArray(info.value)) info.out = '= ' + ME.format(info.value);      // lists show their values
+    });
+    // sliders by name (so that a point like (a, b) can be dragged)
+    const sliderByName = {};
+    st.rows.forEach(r => { if (r._r && r._r.slider) sliderByName[r._r.name] = r; });
 
     // 3d. undefined single letters get a slider automatically (value 1, like Desmos)
     if (depth === 0) {
@@ -215,6 +231,9 @@
           case 'point': {
             const tuple = s.ast;
             it = { kind: 'point', fx: ME.compile(tuple.items[0], [], env), fy: ME.compile(tuple.items[1], [], env), cond: ME.compileConds(s.cond, [], env) };
+            // a point whose coordinates are plain numbers (or sliders) can be dragged with the mouse
+            const specs = tuple.items.map(n => dragSpec(n, sliderByName));
+            if (specs.every(Boolean) && !s.cond) it.drag = specs;
             break;
           }
           case 'param': {
@@ -234,6 +253,15 @@
       } catch (e) { r._r = { error: e.message || 'Cannot read this' }; }
     });
     refreshRowStatus();
+  }
+
+  const unwrap = n => { while (n && n.n === 'group') n = n.a; return n; };
+  function dragSpec(node, sliders) {
+    node = unwrap(node);
+    if (node.n === 'num') return { lit: node.v };
+    if (node.n === 'neg' && unwrap(node.a).n === 'num') return { lit: -unwrap(node.a).v };
+    if (node.n === 'var' && sliders[node.name]) return { slider: node.name, row: sliders[node.name] };
+    return null;
   }
 
   // a table is a list of points (and optionally a polyline)
@@ -313,9 +341,9 @@
 
     drawGrid(c, v, S);
     // images and inequality shading go underneath the curves
-    items.forEach(it => { if (!it.row.hidden) { if (it.kind === 'image') drawImage(c, it); else if (it.kind === 'ineq') drawIneqFill(c, it, fast); } });
+    items.forEach(it => { if (!isHidden(it.row)) { if (it.kind === 'image') drawImage(c, it); else if (it.kind === 'ineq') drawIneqFill(c, it, fast); } });
     drawNumbers(c, v, S);
-    items.forEach(it => { if (!it.row.hidden) drawItem(c, it, fast); });
+    items.forEach(it => { if (!isHidden(it.row)) drawItem(c, it, fast); });
     drawGeometry(c);
     if (st.hover) drawHover(c, st.hover);
   }
@@ -539,11 +567,17 @@
     c.beginPath(); c.arc(x, y, r, 0, TAU); c.fillStyle = color; c.fill();
     c.lineWidth = 1.5; c.strokeStyle = '#fff'; c.setLineDash([]); c.stroke();
   }
-  function drawPoint(c, it) {
+  // the coordinates of a point item as a list of [x, y] pairs (a list like (L1, L2) gives several points)
+  function pointList(it) {
     const x = it.fx(), y = it.fy();
-    if (!isFinite(x) || !isFinite(y) || (it.cond && !it.cond())) return;
-    dot(c, X(x), Y(y), it.row.color);
+    if (it.cond && !it.cond()) return [];
+    const xs = Array.isArray(x), ys = Array.isArray(y);
+    if (!xs && !ys) return isFinite(x) && isFinite(y) ? [[x, y]] : [];
+    const n = Math.min(xs ? x.length : Infinity, ys ? y.length : Infinity), out = [];
+    for (let i = 0; i < n; i++) { const a = xs ? x[i] : x, b = ys ? y[i] : y; if (isFinite(a) && isFinite(b)) out.push([a, b]); }
+    return out;
   }
+  function drawPoint(c, it) { pointList(it).forEach(p => dot(c, X(p[0]), Y(p[1]), it.row.color)); }
   function drawTable(c, it) {
     if (it.row.line && it.pts.length > 1) {
       c.beginPath(); it.pts.forEach((p, i) => (i ? c.lineTo(X(p.x), Y(p.y)) : c.moveTo(X(p.x), Y(p.y)))); c.stroke();
@@ -621,6 +655,12 @@
   const activeField = () => (st.active ? fields.get(st.active) : null);
   const lastField = { f: null };                       // remembered so the keypad still works right after tapping a key
 
+  // a folder holds the rows that follow it, up to the next folder
+  function assignFolders() {
+    let cur = null;
+    st.rows.forEach(r => { if (r.type === 'folder') { cur = r; r._folder = null; } else r._folder = cur; });
+  }
+  const isHidden = r => !!(r.hidden || (r._folder && r._folder.hidden));
   const isEmptyExpr = r => r.type === 'expr' && !r.src.trim();
   function ensureTrailingEmpty() {
     const last = st.rows[st.rows.length - 1];
@@ -633,15 +673,21 @@
     const keepScroll = box.scrollTop;
     box.innerHTML = ''; fields.clear(); rowEls.clear();
     st.rows.forEach((r, i) => box.appendChild(makeRow(r, i)));
+    box.appendChild(h('div', { id: 'gGeo' }));
+    renderGeoList();
     box.scrollTop = keepScroll;
     window.UI.hydrateIcons(box);
     refreshRowStatus();
   }
   // refresh numbers, colour dots, results, errors and sliders without rebuilding the inputs
   function refreshRowStatus() {
-    st.rows.forEach((r, i) => {
+    assignFolders();
+    let count = 0;
+    st.rows.forEach(r => {
       const el = rowEls.get(r.id); if (!el) return;
-      el.querySelector('.g-n').textContent = i + 1;
+      if (r.type !== 'folder') { count++; el.querySelector('.g-n').textContent = count; }
+      el.classList.toggle('in-folder', !!r._folder);
+      el.hidden = !!(r._folder && r._folder.collapsed);
       const info = r._r || {};
       const dotEl = el.querySelector('.g-dot');
       el.classList.toggle('has-graph', !!info.graph);
@@ -664,17 +710,23 @@
   function makeRow(r, i) {
     const el = h('div', { class: 'g-row type-' + r.type, 'data-id': r.id });
     rowEls.set(r.id, el);
-    const dot = h('button', { class: 'g-dot', type: 'button', title: 'Colour, style and visibility', 'aria-label': 'Row options', onclick: e => { e.stopPropagation(); openRowMenu(r, dot); } },
-      h('span', { class: 'g-n', text: i + 1 }));
+    const dot = h('button', { class: 'g-dot', type: 'button', title: 'Colour, style and visibility', 'aria-label': 'Row options', onclick: e => {
+      e.stopPropagation();
+      if (suppressClick) return;                                    // the click that ends a drag is not a click
+      if (r.type === 'folder') toggleFolder(r, dot); else openRowMenu(r, dot);
+    } }, h('span', { class: 'g-n', text: i + 1 }));
+    const num = h('div', { class: 'g-num', title: 'Drag to reorder' }, dot);
+    num.addEventListener('pointerdown', e => startReorder(e, r, el));
     const main = h('div', { class: 'g-main' });
     const del = h('button', { class: 'g-del', type: 'button', title: 'Delete', 'aria-label': 'Delete', onclick: e => { e.stopPropagation(); deleteRow(r); } });
     del.innerHTML = window.ICONS.close;
-    el.append(h('div', { class: 'g-num' }, dot), main, del);
+    el.append(num, main, del);
 
     if (r.type === 'expr') buildExprField(r, main, el);
     else if (r.type === 'note') buildNote(r, main);
     else if (r.type === 'image') buildImageRow(r, main);
     else if (r.type === 'table') buildTableRow(r, main);
+    else if (r.type === 'folder') buildFolder(r, main, dot);
 
     main.append(h('div', { class: 'g-out', hidden: true }), h('div', { class: 'g-err', hidden: true }));
     el.addEventListener('pointerdown', e => { if (e.target === el || e.target === main) { e.preventDefault(); focusRow(r); } });
@@ -736,6 +788,39 @@
     if (i >= st.rows.length && create) { st.rows.push(newRow('expr')); buildPanel(); }
     const t = st.rows[clamp(i, 0, st.rows.length - 1)];
     if (t) focusRow(t);
+  }
+
+  /* Dragging the number column moves a row (a folder moves together with the rows inside it). */
+  let suppressClick = false;
+  function startReorder(e, r, el) {
+    if (e.button) return;
+    const startY = e.clientY, box = $('#gRows');
+    let dragging = false, target = null;
+    const i0 = st.rows.indexOf(r), members = [r];
+    if (r.type === 'folder') for (let k = i0 + 1; k < st.rows.length && st.rows[k].type !== 'folder'; k++) members.push(st.rows[k]);
+    const marks = () => box.querySelectorAll('.drop-before,.drop-after').forEach(n => n.classList.remove('drop-before', 'drop-after'));
+    const move = ev => {
+      const dy = ev.clientY - startY;
+      if (!dragging) { if (Math.abs(dy) < 6) return; dragging = true; el.classList.add('dragging'); box.classList.add('reordering'); }
+      el.style.transform = `translateY(${dy}px)`;
+      marks(); target = null;
+      const others = st.rows.filter(x => !members.includes(x) && rowEls.get(x.id) && !rowEls.get(x.id).hidden);
+      for (const x of others) { const b = rowEls.get(x.id).getBoundingClientRect(); if (ev.clientY < b.top + b.height / 2) { target = { row: x, after: false }; break; } }
+      if (!target && others.length) target = { row: others[others.length - 1], after: true };
+      if (target) rowEls.get(target.row.id).classList.add(target.after ? 'drop-after' : 'drop-before');
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      if (!dragging) return;
+      suppressClick = true; setTimeout(() => { suppressClick = false; }, 60);
+      el.classList.remove('dragging'); el.style.transform = ''; box.classList.remove('reordering'); marks();
+      if (!target) return;
+      const rest = st.rows.filter(x => !members.includes(x));
+      rest.splice(rest.indexOf(target.row) + (target.after ? 1 : 0), 0, ...members);
+      st.rows = rest; ensureTrailingEmpty();
+      recompute(1); buildPanel(); redraw(); save(); pushHistory();
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
   }
 
   // called on every keystroke in a row
@@ -820,6 +905,24 @@
     requestAnimationFrame(tick);
   }
 
+  /* --- folder row --- */
+  function toggleFolder(r, dot) {
+    r.collapsed = !r.collapsed;
+    dot.classList.toggle('collapsed', r.collapsed);
+    refreshRowStatus(); save();
+  }
+  function buildFolder(r, main, dot) {
+    dot.innerHTML = window.ICONS.chevDown;
+    dot.classList.toggle('collapsed', !!r.collapsed);
+    dot.title = 'Open or close the folder';
+    const title = h('input', { type: 'text', class: 'g-folder-title', placeholder: 'Folder', value: r.title || '', 'aria-label': 'Folder name', spellcheck: 'false' });
+    title.addEventListener('input', () => { r.title = title.value; save(); });
+    title.addEventListener('focus', () => { st.active = r.id; });
+    const vis = h('button', { class: 'g-chip small', type: 'button', text: r.hidden ? 'Show' : 'Hide', title: 'Show or hide everything in this folder on the graph' });
+    vis.addEventListener('click', () => { r.hidden = !r.hidden; vis.textContent = r.hidden ? 'Show' : 'Hide'; redraw(); save(); });
+    main.append(h('div', { class: 'g-folder-row' }, title, vis));
+  }
+
   /* --- note row --- */
   function buildNote(r, main) {
     const ta = h('textarea', { class: 'g-note', rows: 1, placeholder: 'Add a note…', spellcheck: 'true' });
@@ -889,6 +992,52 @@
     main.append(tbl, lineBtn);
   }
 
+  /* --- geometry objects drawn with the Tools tab, listed under the equations (like GeoGebra's Algebra view) --- */
+  function describeGeo(o) {
+    const k = K(), f = v => ME.format(+(+v).toPrecision(5), 6), P = p => '(' + f(p.x / k) + ', ' + f(-p.y / k) + ')';
+    switch (o.type) {
+      case 'dot': return { name: o.label || 'Point', text: P(o) };
+      case 'seg': {
+        const dx = (o.b.x - o.a.x) / k, dy = -(o.b.y - o.a.y) / k;
+        if (o.arrow) return { name: 'Vector', text: '⟨' + f(dx) + ', ' + f(dy) + '⟩' };
+        if (o.ext === 'line') {
+          if (Math.abs(dx) < 1e-9) return { name: 'Line', text: 'x = ' + f(o.a.x / k) };
+          const m = dy / dx, c = -o.a.y / k - m * (o.a.x / k);
+          return { name: 'Line', text: 'y = ' + f(m) + 'x ' + (c < 0 ? '− ' : '+ ') + f(Math.abs(c)) };
+        }
+        if (o.ext === 'ray') return { name: 'Ray', text: 'from ' + P(o.a) };
+        return { name: 'Segment', text: 'length ' + f(Math.hypot(dx, dy)) };
+      }
+      case 'circle': return { name: 'Circle', text: 'centre ' + P({ x: o.cx, y: o.cy }) + ', r = ' + f(o.r / k) };
+      case 'arc': return { name: 'Arc', text: 'r = ' + f(o.r / k) };
+      case 'sector': return { name: 'Sector', text: 'r = ' + f(o.r / k) };
+      case 'poly': {
+        let a = 0; o.pts.forEach((p, i) => { const q = o.pts[(i + 1) % o.pts.length]; a += p.x * q.y - q.x * p.y; });
+        return { name: 'Polygon', text: o.pts.length + ' vertices, area ' + f(Math.abs(a) / 2 / (k * k)) };
+      }
+      case 'image': return { name: 'Image', text: '' };
+      case 'label': case 'text': return { name: 'Text', text: o.text || '' };
+      default: return { name: o.type, text: '' };
+    }
+  }
+  function renderGeoList() {
+    const box = $('#gGeo'); if (!box) return;
+    box.innerHTML = '';
+    const list = st.geo.objects.filter(o => !o.erase);
+    if (!list.length) return;
+    box.append(h('div', { class: 'g-geo-title', text: 'Geometry' }));
+    list.forEach(o => {
+      const d = describeGeo(o);
+      const eye = h('button', { class: 'g-gbtn' + (o.hidden ? ' off' : ''), type: 'button', title: o.hidden ? 'Show' : 'Hide', 'aria-label': o.hidden ? 'Show object' : 'Hide object' });
+      eye.innerHTML = o.hidden ? window.ICONS.eyeOff : window.ICONS.eye;
+      eye.addEventListener('click', () => { o.hidden = !o.hidden; pushHistory(); renderGeoList(); redraw(); save(); });
+      const del = h('button', { class: 'g-gbtn', type: 'button', title: 'Delete', 'aria-label': 'Delete object' });
+      del.innerHTML = window.ICONS.close;
+      del.addEventListener('click', () => { st.geo.objects = st.geo.objects.filter(x => x !== o); if (geo) geo.reset(); pushHistory(); renderGeoList(); redraw(); save(); });
+      box.append(h('div', { class: 'g-grow' }, h('span', { class: 'g-gname', text: d.name }), h('span', { class: 'g-gtext', text: d.text }), eye, del));
+    });
+  }
+
   /* --- popup menus --- */
   let popEl = null;
   function closePop() { if (popEl) { popEl.remove(); popEl = null; } window.removeEventListener('pointerdown', outside, true); }
@@ -930,6 +1079,7 @@
     openPop(h('div', { class: 'g-menu-card' },
       item('expr', 'Expression', () => addRow(newRow('expr'))),
       item('note', 'Note', () => addRow(newRow('note'))),
+      item('folder', 'Folder', () => addRow(newRow('folder', { title: '', collapsed: false }))),
       item('image', 'Image', addImage),
       item('table', 'Table', () => addRow(newRow('table', { rows: [['', ''], ['', ''], ['', '']] })))), $('#gAdd'));
   }
@@ -1026,7 +1176,7 @@
   function makeController() {
     return window.Geo.createController({
       objects: () => st.geo.objects,
-      commit: list => { pushHistory(); st.geo.objects = list; pushHistory(); redraw(); save(); setTimeout(redraw, 350); setTimeout(redraw, 1200); },
+      commit: list => { st.geo.objects = list; pushHistory(); renderGeoList(); redraw(); save(); setTimeout(redraw, 350); setTimeout(redraw, 1200); },
       nextLabel: () => window.Geo.labelFor(st.geo.labelCount++),
       scale: () => geoScale(),
       redraw: () => redraw(),
@@ -1099,6 +1249,7 @@
         h('div', { class: 'g-set-sec', text: 'Graph bounds' }),
         h('div', { class: 'g-flds' }, bf('X min', 'xmin'), bf('X max', 'xmax'), bf('Y min', 'ymin'), bf('Y max', 'ymax')),
         h('div', { class: 'g-set-foot' },
+          h('button', { class: 'g-chip', type: 'button', text: 'Equal axes (1:1)', onclick: () => { const v = st.view, cy = gy(H / 2); setView({ ...v, sy: v.sx, oy: H / 2 + cy * v.sx }, false); fillBounds(); } }),
           h('button', { class: 'g-chip', type: 'button', text: 'Reset view', onclick: () => { setView(homeView(), false); fillBounds(); } }),
           h('button', { class: 'g-chip', type: 'button', text: 'Reset settings', onclick: () => { Object.assign(S, DEFAULT_SETTINGS); close(); recompute(1); refreshRowStatus(); redraw(); save(); openSettings(); } }))));
     overlay.append(card);
@@ -1109,6 +1260,39 @@
   /* ---------------------------------------------------------
      8. Pointer input on the graph
      --------------------------------------------------------- */
+  /* a point defined by plain numbers (or sliders) can be dragged; its text (or slider) is rewritten as it moves */
+  function findDraggable(px, py) {
+    let best = null, bd = 13;
+    items.forEach(it => {
+      if (it.kind !== 'point' || !it.drag || isHidden(it.row)) return;
+      pointList(it).forEach(p => { const d = Math.hypot(X(p[0]) - px, Y(p[1]) - py); if (d < bd) { bd = d; best = it; } });
+    });
+    return best;
+  }
+  function applyPointDrag(it, x, y) {
+    const prec = Math.pow(10, Math.ceil(Math.log10(6 / Math.min(st.view.sx, st.view.sy))));   // snap to about 6 pixels
+    const dec = Math.max(0, Math.ceil(-Math.log10(prec) - 1e-9));
+    const snap = v => +(Math.round(v / prec) * prec).toFixed(dec);
+    const row = it.row, text = [], moves = [];
+    [x, y].forEach((v, i) => {
+      const spec = it.drag[i], val = snap(v);
+      if (spec.lit !== undefined) text[i] = String(val); else { text[i] = spec.slider; moves.push([spec.row, val]); }
+    });
+    moves.forEach(([r, v]) => setSliderValue(r, v, true));
+    row.src = '(' + text[0] + ',' + text[1] + ')';
+    const f = fields.get(row.id); if (f) f.el.value = row.src;
+    recompute(1); refreshRowStatus(); redraw(true); save();
+  }
+  // the strips with the axis numbers: dragging them stretches that axis only
+  function axisZone(px, py) {
+    const S = st.settings;
+    if (!S.axes || !S.numbers) return null;
+    const yPos = clamp(st.view.oy + 4, 4, H - 20), xPos = clamp(st.view.ox - 6, 38, W - 6);
+    if (py >= yPos - 6 && py <= yPos + 22) return 'x';
+    if (px >= xPos - 46 && px <= xPos + 8) return 'y';
+    return null;
+  }
+
   function bindCanvas() {
     const c = canvas();
     const pts = new Map();                              // active pointers (for pinch zoom)
@@ -1125,7 +1309,10 @@
         const [a, b] = [...pts.values()];
         pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; drag = null;
       } else if (pts.size === 1) {
+        const p0 = pos(e), dp = !st.geo.tool && findDraggable(p0.x, p0.y), zone = !st.geo.tool && !dp && axisZone(p0.x, p0.y);
         drag = { x: e.clientX, y: e.clientY, ox: st.view.ox, oy: st.view.oy, moved: false, id: e.pointerId };
+        if (dp) drag.pt = dp.row;                                              // dragging a point
+        else if (zone) Object.assign(drag, { axis: zone, sx: st.view.sx, sy: st.view.sy, px: p0.x, py: p0.y });   // stretching an axis
       }
       setHover(null);
     });
@@ -1142,6 +1329,19 @@
         pinch = { d, mx, my }; redraw(true); save();
         return;
       }
+      if (drag && drag.id === e.pointerId && drag.pt) {
+        const it = items.find(i => i.row === drag.pt && i.kind === 'point');
+        if (it && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 3) { drag.moved = true; applyPointDrag(it, gx(p.x), gy(p.y)); }
+        return;
+      }
+      if (drag && drag.id === e.pointerId && drag.axis) {
+        const dx = e.clientX - drag.x, dy = e.clientY - drag.y, v = st.view;
+        if (Math.hypot(dx, dy) > 3) drag.moved = true;
+        if (drag.axis === 'x') { const sx = clamp(drag.sx * Math.exp(dx * 0.004), 1e-5, 1e8); st.view = { ...v, sx, ox: drag.px - (drag.px - drag.ox) * (sx / drag.sx) }; }
+        else { const sy = clamp(drag.sy * Math.exp(-dy * 0.004), 1e-5, 1e8); st.view = { ...v, sy, oy: drag.py - (drag.py - drag.oy) * (sy / drag.sy) }; }
+        redraw(true);
+        return;
+      }
       if (drag && drag.id === e.pointerId) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.moved && Math.hypot(dx, dy) > 5) { drag.moved = true; c.classList.add('panning'); }
@@ -1149,6 +1349,8 @@
         return;
       }
       if (e.pointerType === 'mouse') {
+        const zone = !st.geo.tool && axisZone(p.x, p.y);
+        c.style.cursor = st.geo.tool ? 'crosshair' : findDraggable(p.x, p.y) ? 'move' : zone === 'x' ? 'ew-resize' : zone === 'y' ? 'ns-resize' : '';
         if (st.geo.tool && geo) geo.move(toWorld(p.x, p.y));
         setHover(findHover(p.x, p.y), p);
       }
@@ -1156,6 +1358,11 @@
     const end = e => {
       pts.delete(e.pointerId);
       if (pinch && pts.size < 2) { pinch = null; drag = null; save(); return; }
+      if (drag && drag.id === e.pointerId && (drag.pt || drag.axis)) {
+        const did = drag.moved; drag = null;
+        if (did) { pushHistory(); save(); }
+        return;
+      }
       if (drag && drag.id === e.pointerId) {
         const wasClick = !drag.moved; drag = null; c.classList.remove('panning');
         if (e.type === 'pointerup') {
@@ -1194,8 +1401,8 @@
       if (isFinite(d) && d < bd) { bd = d; best = { px: sx, py: sy, x, y, color, label }; }
     };
     items.forEach(it => {
-      if (it.row.hidden) return;
-      if (it.kind === 'point') { const x = it.fx(), y = it.fy(); if (isFinite(x) && isFinite(y)) consider(x, y, it.row.color); }
+      if (isHidden(it.row)) return;
+      if (it.kind === 'point') pointList(it).forEach(p => consider(p[0], p[1], it.row.color));
       else if (it.kind === 'table') it.pts.forEach(p => consider(p.x, p.y, it.row.color));
       else if (it.kind === 'explicit') {
         const x = gx(px); let y = it.fn(x);
